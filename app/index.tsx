@@ -1,7 +1,10 @@
+import './globals.css';
+
 import { generateAPIUrl } from './utils/utils';
 import { useChat } from '@ai-sdk/react';
+import { Link } from 'expo-router';
 import { fetch as expoFetch } from 'expo/fetch';
-import { View, TextInput, ScrollView, Text, SafeAreaView } from 'react-native';
+import { View, TextInput, ScrollView, Text, SafeAreaView, Button } from 'react-native';
 
 export default function App() {
   const { messages, error, handleInputChange, input, handleSubmit } = useChat({
@@ -13,7 +16,8 @@ export default function App() {
   if (error) return <Text>{error.message}</Text>;
 
   return (
-    <SafeAreaView style={{ height: '100%' }}>
+    <SafeAreaView className='' style={{ height: '100%' }}>
+      <Link className='bg-red-100' href="/ask"><Button title="Ask" /></Link>
       <View
         style={{
           height: '95%',
