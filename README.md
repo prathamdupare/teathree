@@ -2,7 +2,7 @@
 
 #### T3 ChatCloneathon Submission
 
-This is my submission for the [T3 ChatCloneathon](https://t3.gg/chatcloneathon) - an AI chat app built with React Native and Expo.
+This is my submission for the [T3 ChatCloneathon](https://cloneathon.t3.chat/) - an AI chat app built with React Native and Expo.
 
 ## About
 
