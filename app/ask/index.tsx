@@ -1,9 +1,11 @@
-
 import { useCompletion } from '@ai-sdk/react';
 import { useState } from 'react';
-import { View, TextInput, Button, Text, StyleSheet } from 'react-native';
-import { generateAPIUrl } from './utils/utils';
+import { View, StyleSheet } from 'react-native';
+import { generateAPIUrl } from '~/app/utils/utils';
 import { fetch as expoFetch } from 'expo/fetch';
+import { Button } from '~/components/ui/button';
+import { Input } from '~/components/ui/input';
+import { Text } from '~/components/ui/text';
 
 
 export default function Ask() {
@@ -23,13 +25,15 @@ export default function Ask() {
 
   return (
     <View >
-      <TextInput
+      <Input
         style=""
         placeholder="Ask a question"
         value={message}
         onChangeText={setMessage}
       />
-      <Button title="Ask" onPress={() => {handleSubmit}} />
+      <Button  onPress={() => {handleSubmit}} >
+        <Text>Ask</Text>
+      </Button>
     </View>
   );
 }
