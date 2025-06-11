@@ -9,6 +9,8 @@ import { View, ScrollView, SafeAreaView, Pressable } from 'react-native';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
 import { Card } from '~/components/ui/card';
+import { useQuery } from 'convex/react';
+import { api } from '~/convex/_generated/api';
 
 export default function App() {
   const { messages, error, handleInputChange, input, handleSubmit } = useChat({
@@ -17,13 +19,12 @@ export default function App() {
     onError: error => console.error(error, 'ERROR'),
   });
 
+  const tasks = useQuery(api.tasks.get);
+
   if (error) return <Text className="p-4 text-destructive">{error.message}</Text>;
 
   const suggestionCards = [
     { icon: "✨", title: "Create", subtitle: "Help me brainstorm ideas" },
-    { icon: "🔍", title: "Explore", subtitle: "Research a topic" },
-    { icon: "💻", title: "Code", subtitle: "Write and debug code" },
-    { icon: "📚", title: "Learn", subtitle: "Explain concepts" },
   ];
 
   return (
@@ -37,7 +38,7 @@ export default function App() {
               <Text className="text-3xl font-bold text-center mb-8 text-foreground">
                 How can I help you, Prathmesh?
               </Text>
-              
+
               {/* Suggestion Cards */}
               <View className="grid grid-cols-2 gap-4 w-full max-w-2xl">
                 {suggestionCards.map((card, index) => (
@@ -67,6 +68,15 @@ export default function App() {
                 <Pressable className="p-3 bg-muted rounded-lg">
                   <Text className="text-muted-foreground text-center">What is the meaning of life?</Text>
                 </Pressable>
+              </View>
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                {tasks?.map(({ _id, text }) => <Text key={_id}>{text}</Text>)}
               </View>
             </View>
           ) : (
@@ -112,7 +122,7 @@ export default function App() {
                 autoFocus={false}
               />
             </View>
-            <Button 
+            <Button
               onPress={() => handleSubmit()}
               disabled={!input.trim()}
               className="px-4 py-2"

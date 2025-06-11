@@ -11,6 +11,8 @@ import { useColorScheme } from '~/lib/useColorScheme';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
 import { Text } from '~/components/ui/text';
 
+import { ConvexProvider, ConvexReactClient } from "convex/react";
+
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
   colors: NAV_THEME.light,
@@ -46,6 +48,11 @@ function DrawerToggleButton() {
   );
 }
 
+
+const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
+  unsavedChangesWarning: false,
+});
+
 export {
 // Catch any errors thrown by the Layout component.
 ErrorBoundary,
@@ -75,9 +82,10 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-        <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
-        <Drawer
+      <ConvexProvider client={convex}>
+        <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
+          <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
+          <Drawer
           screenOptions={{
             drawerType: Platform.OS === 'web' ? 'permanent' : 'slide',
             drawerStyle: {
@@ -113,7 +121,8 @@ export default function RootLayout() {
             }}
           />
         </Drawer>
-      </ThemeProvider>
+        </ThemeProvider>
+        </ConvexProvider>
     </GestureHandlerRootView>
   );
 }
