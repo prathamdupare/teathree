@@ -1,137 +1,238 @@
-import { Input } from '~/components/ui/input';
-import './globals.css';
-
 import { generateAPIUrl } from './utils/utils';
 import { useChat } from '@ai-sdk/react';
-import { Link } from 'expo-router';
 import { fetch as expoFetch } from 'expo/fetch';
-import { View, ScrollView, SafeAreaView, Pressable } from 'react-native';
+import { View, TextInput, ScrollView, Text, SafeAreaView, Platform } from 'react-native';
+import { SignedIn, SignedOut, useUser } from '@clerk/clerk-expo';
+import { SignOutButton } from '~/components/SignOutButton';
+import { Link } from 'expo-router';
+import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
-import { Text } from '~/components/ui/text';
-import { Card } from '~/components/ui/card';
-import { useQuery } from 'convex/react';
-import { api } from '~/convex/_generated/api';
+import { ThemeToggle } from '~/components/ui/theme-toggle';
+import { useState } from 'react';
+
+const SUGGESTED_PROMPTS = [
+  "How does AI work?",
+  "Are black holes real?", 
+  "How many Rs are in the word \"strawberry\"?",
+  "What is the meaning of life?"
+];
+
+const ACTION_BADGES = [
+  { label: "Create", icon: "✨" },
+  { label: "Explore", icon: "🔍" },
+  { label: "Code", icon: "💻" },
+  { label: "Learn", icon: "📚" }
+];
 
 export default function App() {
+  const { user } = useUser();
+  const [selectedModel, setSelectedModel] = useState("Gemini 1.5 Flash");
+  
   const { messages, error, handleInputChange, input, handleSubmit } = useChat({
     fetch: expoFetch as unknown as typeof globalThis.fetch,
     api: generateAPIUrl('/api/chat'),
-    onError: error => console.error(error, 'ERROR'),
+    streamProtocol: 'data',
+    onError: error => {
+      console.error('Chat Error:', error);
+      console.error('Error details:', error.message);
+    },
+    onFinish: (message) => {
+      console.log('Message completed:', message);
+    },
   });
 
-  const tasks = useQuery(api.tasks.get);
+  if (error) {
+    return (
+      <SafeAreaView className="flex-1 bg-background">
+        <View className="flex-1 items-center justify-center p-4">
+          <Text className="text-destructive text-lg font-semibold mb-2">
+            Error: {error.message}
+          </Text>
+          <Text className="text-muted-foreground text-sm text-center">
+            Please check your API configuration and try again.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  if (error) return <Text className="p-4 text-destructive">{error.message}</Text>;
+  const EmptyState = () => (
+    <View className="flex-1 items-center justify-center p-8">
+      <View className="max-w-2xl w-full">
+        <Text className="text-3xl font-bold text-center mb-8 text-foreground">
+          How can I help you, {user?.firstName || 'there'}?
+        </Text>
+        
+        {/* Action Badges */}
+        <View className="flex-row justify-center items-center mb-8 gap-3 flex-wrap">
+          {ACTION_BADGES.map((action, index) => (
+            <Badge key={index} variant="secondary" className="px-4 py-2">
+              <Text className="text-secondary-foreground">
+                {action.icon} {action.label}
+              </Text>
+            </Badge>
+          ))}
+        </View>
 
-  const suggestionCards = [
-    { icon: "✨", title: "Create", subtitle: "Help me brainstorm ideas" },
-  ];
+        {/* Suggested Prompts */}
+        <View className="space-y-3">
+          {SUGGESTED_PROMPTS.map((prompt, index) => (
+            <Button
+              key={index}
+              variant="ghost"
+              className="w-full justify-start p-4 h-auto bg-secondary/30 border border-border rounded-xl"
+              onPress={() => {
+                handleInputChange({
+                  target: { value: prompt }
+                } as any);
+              }}
+            >
+              <Text className="text-foreground text-left">{prompt}</Text>
+            </Button>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <View className="flex-1 flex-col">
-        {/* Chat Messages Area */}
-        <ScrollView className="flex-1 px-4">
+      <SignedIn>
+        {/* Header */}
+        <View className="flex-row items-center justify-between p-4 border-b border-border">
+          <Text className="text-xl font-semibold text-foreground">T3.chat</Text>
+          <View className="flex-row items-center gap-3">
+            <ThemeToggle />
+            <SignOutButton />
+          </View>
+        </View>
+
+        {/* Main Content */}
+        <View className="flex-1">
           {messages.length === 0 ? (
-            // Welcome Screen
-            <View className="flex-1 justify-center items-center py-8">
-              <Text className="text-3xl font-bold text-center mb-8 text-foreground">
-                How can I help you, Prathmesh?
-              </Text>
-
-              {/* Suggestion Cards */}
-              <View className="grid grid-cols-2 gap-4 w-full max-w-2xl">
-                {suggestionCards.map((card, index) => (
-                  <Card key={index} className="p-4 border border-border bg-card">
-                    <View className="flex-row items-center space-x-3">
-                      <Text className="text-xl">{card.icon}</Text>
-                      <View className="flex-1">
-                        <Text className="font-semibold text-card-foreground">{card.title}</Text>
-                        <Text className="text-sm text-muted-foreground mt-1">{card.subtitle}</Text>
-                      </View>
-                    </View>
-                  </Card>
-                ))}
-              </View>
-
-              {/* Sample Questions */}
-              <View className="mt-8 space-y-3 w-full max-w-2xl">
-                <Pressable className="p-3 bg-muted rounded-lg">
-                  <Text className="text-muted-foreground text-center">How does AI work?</Text>
-                </Pressable>
-                <Pressable className="p-3 bg-muted rounded-lg">
-                  <Text className="text-muted-foreground text-center">Are black holes real?</Text>
-                </Pressable>
-                <Pressable className="p-3 bg-muted rounded-lg">
-                  <Text className="text-muted-foreground text-center">How many Rs are in the word "strawberry"?</Text>
-                </Pressable>
-                <Pressable className="p-3 bg-muted rounded-lg">
-                  <Text className="text-muted-foreground text-center">What is the meaning of life?</Text>
-                </Pressable>
-              </View>
-              <View
-                style={{
-                  flex: 1,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                {tasks?.map(({ _id, text }) => <Text key={_id}>{text}</Text>)}
-              </View>
-            </View>
+            <EmptyState />
           ) : (
-            // Chat Messages
-            <View className="py-4">
-              {messages.map((m) => (
-                <View key={m.id} className={`mb-6 ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-                  <View className={`max-w-[80%] ${m.role === 'user' ? 'bg-primary' : 'bg-muted'} rounded-lg p-4`}>
-                    <Text className={`${m.role === 'user' ? 'text-primary-foreground' : 'text-foreground'}`}>
-                      {m.content}
+            <ScrollView 
+              className="flex-1 px-4"
+              contentContainerStyle={{ paddingVertical: 16 }}
+            >
+              {messages.map((message) => (
+                <View
+                  key={message.id}
+                  className={`mb-6 ${
+                    message.role === 'user' ? 'items-end' : 'items-start'
+                  }`}
+                >
+                  <View
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                      message.role === 'user'
+                        ? 'bg-[hsl(var(--chat-bubble-user))] ml-auto'
+                        : 'bg-secondary mr-auto'
+                    }`}
+                  >
+                    <Text
+                      className={`text-sm leading-6 ${
+                        message.role === 'user'
+                          ? 'text-white'
+                          : 'text-foreground'
+                      }`}
+                    >
+                      {message.content}
                     </Text>
                   </View>
-                  <Text className="text-xs text-muted-foreground mt-1 px-2">
-                    {m.role === 'user' ? 'You' : 'AI'}
+                  <Text className="text-xs text-muted-foreground mt-1 px-1">
+                    {message.role === 'user' ? 'You' : 'AI'}
                   </Text>
                 </View>
               ))}
-            </View>
+            </ScrollView>
           )}
-        </ScrollView>
+        </View>
 
         {/* Input Area */}
-        <View className="p-4 border-t border-border bg-background">
-          <View className="flex-row items-end space-x-2">
-            <View className="flex-1">
-              <Input
-                placeholder="Type your message here..."
-                value={input}
-                onChange={e =>
-                  handleInputChange({
-                    ...e,
-                    target: {
-                      ...e.target,
-                      value: e.nativeEvent.text,
-                    },
-                  } as unknown as React.ChangeEvent<HTMLInputElement>)
-                }
-                onSubmitEditing={e => {
-                  handleSubmit(e);
-                  e.preventDefault();
-                }}
-                className="flex-1"
-                autoFocus={false}
-              />
+        <View className="p-4 border-t border-border">
+          <View className="flex-row items-end gap-3">
+            {/* Model Display (simplified) */}
+            <View className="min-w-[140px]">
+              <View className="h-12 bg-secondary border border-border rounded-lg px-3 py-2 justify-center">
+                <Text className="text-foreground text-sm font-medium">
+                  {selectedModel}
+                </Text>
+              </View>
             </View>
-            <Button
-              onPress={() => handleSubmit()}
-              disabled={!input.trim()}
-              className="px-4 py-2"
+
+            {/* Message Input */}
+            <View className="flex-1">
+              <View className="relative">
+                <TextInput
+                  className="bg-secondary border border-border rounded-xl px-4 py-3 pr-12 text-foreground placeholder:text-muted-foreground min-h-[48px] text-base"
+                  placeholder="Type your message here..."
+                  value={input}
+                  onChangeText={(text) =>
+                    handleInputChange({
+                      target: { value: text }
+                    } as any)
+                  }
+                  onSubmitEditing={(e) => {
+                    handleSubmit(e as any);
+                  }}
+                  multiline
+                  style={{
+                    maxHeight: 120,
+                    textAlignVertical: 'top',
+                  }}
+                />
+                
+                {/* Send Button */}
+                <Button
+                  onPress={() => handleSubmit()}
+                  disabled={!input.trim()}
+                  className="absolute right-2 bottom-2 w-8 h-8 rounded-lg bg-primary disabled:opacity-50"
+                  size="icon"
+                >
+                  <Text className="text-primary-foreground">↑</Text>
+                </Button>
+              </View>
+            </View>
+          </View>
+        </View>
+      </SignedIn>
+
+      <SignedOut>
+        <View className="flex-1 items-center justify-center p-6">
+          <Text className="text-3xl font-bold text-center mb-4 text-foreground">
+            Welcome to T3.chat
+          </Text>
+          <Text className="text-lg text-muted-foreground text-center mb-8">
+            Your AI-powered chat companion
+          </Text>
+          <Text className="text-base text-center mb-8 text-muted-foreground">
+            Please sign in to start chatting with AI
+          </Text>
+          
+          {/* Debug: Test navigation */}
+          <View className="gap-4">
+            <Link href="/sign-in" asChild>
+              <Button className="px-8 py-3">
+                <Text className="text-primary-foreground font-semibold">
+                  Sign In with Google
+                </Text>
+              </Button>
+            </Link>
+            
+            {/* Debug button to test if buttons work */}
+            <Button 
+              variant="outline"
+              onPress={() => {
+                console.log('Debug button pressed - buttons are working!')
+                alert('Button works! Issue might be with navigation.')
+              }}
             >
-              <Text>Send</Text>
+              <Text className="text-foreground">Test Button (Debug)</Text>
             </Button>
           </View>
         </View>
-      </View>
+      </SignedOut>
     </SafeAreaView>
   );
 }
