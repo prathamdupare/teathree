@@ -10,8 +10,11 @@ import { NAV_THEME } from '~/lib/constants';
 import { useColorScheme } from '~/lib/useColorScheme';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
 import { Text } from '~/components/ui/text';
-
+import { ClerkProvider, ClerkLoaded } from '@clerk/clerk-expo'
 import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { tokenCache } from '@clerk/clerk-expo/token-cache'
+import { CustomDrawerContent } from '~/components/CustomDrawerContent';
+import { PortalHost } from '@rn-primitives/portal';
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -53,6 +56,14 @@ const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
   unsavedChangesWarning: false,
 });
 
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+
+if (!publishableKey) {
+  throw new Error(
+    'Missing Publishable Key. Please set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in your .env'
+  );
+}
+
 export {
 // Catch any errors thrown by the Layout component.
 ErrorBoundary,
@@ -81,49 +92,55 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ConvexProvider client={convex}>
-        <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-          <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
-          <Drawer
-          screenOptions={{
-            drawerType: Platform.OS === 'web' ? 'permanent' : 'slide',
-            drawerStyle: {
-              width: 250,
-              backgroundColor: isDarkColorScheme ? NAV_THEME.dark.card : NAV_THEME.light.card,
-            },
-            overlayColor: Platform.OS === 'web' ? 'transparent' : undefined,
-            swipeEnabled: Platform.OS !== 'web',
-            drawerActiveTintColor: isDarkColorScheme ? NAV_THEME.dark.primary : NAV_THEME.light.primary,
-            drawerInactiveTintColor: isDarkColorScheme ? NAV_THEME.dark.text : NAV_THEME.light.text,
-            headerLeft: Platform.OS === 'web' ? () => <DrawerToggleButton /> : undefined,
-          }}
-          initialRouteName="index"
-        >
-          <Drawer.Screen
-            name="index"
-            options={{
-              drawerLabel: 'Home',
-              title: 'Home',
-              drawerItemStyle: Platform.OS === 'web' ? { 
-                marginVertical: 4,
-              } : undefined,
-            }}
-          />
-          <Drawer.Screen
-            name="ask/index"
-            options={{
-              drawerLabel: 'Ask',
-              title: 'Ask Question',
-              drawerItemStyle: Platform.OS === 'web' ? { 
-                marginVertical: 4,
-              } : undefined,
-            }}
-          />
-        </Drawer>
-        </ThemeProvider>
-        </ConvexProvider>
-    </GestureHandlerRootView>
+    <ClerkProvider publishableKey={publishableKey!} tokenCache={tokenCache}>
+      <ClerkLoaded>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <ConvexProvider client={convex}>
+            <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
+              <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
+              <Drawer
+                drawerContent={(props) => <CustomDrawerContent {...props} />}
+                screenOptions={{
+                  drawerType: Platform.OS === 'web' ? 'permanent' : 'slide',
+                  drawerStyle: {
+                    width: 250,
+                    backgroundColor: isDarkColorScheme ? NAV_THEME.dark.card : NAV_THEME.light.card,
+                  },
+                  overlayColor: Platform.OS === 'web' ? 'transparent' : undefined,
+                  swipeEnabled: Platform.OS !== 'web',
+                  drawerActiveTintColor: isDarkColorScheme ? NAV_THEME.dark.primary : NAV_THEME.light.primary,
+                  drawerInactiveTintColor: isDarkColorScheme ? NAV_THEME.dark.text : NAV_THEME.light.text,
+                  headerLeft: Platform.OS === 'web' ? () => <DrawerToggleButton /> : undefined,
+                }}
+                initialRouteName="index"
+              >
+                <Drawer.Screen
+                  name="index"
+                  options={{
+                    drawerLabel: 'Home',
+                    title: 'Home',
+                    drawerItemStyle: Platform.OS === 'web' ? { 
+                      marginVertical: 4,
+                    } : undefined,
+                  }}
+                />
+                <Drawer.Screen
+                  name="ask/index"
+                  options={{
+                    drawerLabel: 'Ask',
+                    title: 'Ask Question',
+                    drawerItemStyle: Platform.OS === 'web' ? { 
+                      marginVertical: 4,
+                    } : undefined,
+                  }}
+                />
+              </Drawer>
+              <PortalHost />
+            </ThemeProvider>
+          </ConvexProvider>
+        </GestureHandlerRootView>
+      </ClerkLoaded>
+    </ClerkProvider>
   );
 }
 

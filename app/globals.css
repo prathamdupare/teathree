@@ -1,49 +1,71 @@
 @tailwind base;
-  @tailwind components;
-  @tailwind utilities;
+@tailwind components;
+@tailwind utilities;
 
-  @layer base {
-      :root {
-        --background: 0 0% 100%;
-        --foreground: 240 10% 3.9%;
-        --card: 0 0% 100%;
-        --card-foreground: 240 10% 3.9%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 240 10% 3.9%;
-        --primary: 240 5.9% 10%;
-        --primary-foreground: 0 0% 98%;
-        --secondary: 240 4.8% 95.9%;
-        --secondary-foreground: 240 5.9% 10%;
-        --muted: 240 4.8% 95.9%;
-        --muted-foreground: 240 3.8% 46.1%;
-        --accent: 240 4.8% 95.9%;
-        --accent-foreground: 240 5.9% 10%;
-        --destructive: 0 84.2% 60.2%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 240 5.9% 90%;
-        --input: 240 5.9% 90%;
-        --ring: 240 5.9% 10%;
-      }
+@layer base {
+    :root {
+      /* T3 Light Theme Colors */
+      --background: 318 58% 96%; /* #f5edfa */
+      --foreground: 264 47% 39%; /* #673c8b */
+      --card: 318 58% 96%; /* #f5edfa */
+      --card-foreground: 264 47% 39%; /* #673c8b */
+      --popover: 318 58% 96%; /* #f5edfa */
+      --popover-foreground: 264 47% 39%; /* #673c8b */
+      --primary: 264 47% 39%; /* #673c8b */
+      --primary-foreground: 318 58% 96%; /* #f5edfa */
+      --secondary: 318 42% 94%; /* #f2def5 */
+      --secondary-foreground: 264 47% 39%; /* #673c8b */
+      --muted: 318 42% 94%; /* #f2def5 */
+      --muted-foreground: 270 11% 64%; /* #a289a9 */
+      --accent: 318 42% 94%; /* #f2def5 */
+      --accent-foreground: 264 47% 39%; /* #673c8b */
+      --destructive: 356 70% 61%; /* #d2626c */
+      --destructive-foreground: 318 58% 96%; /* #f5edfa */
+      --border: 318 42% 94%; /* #f2def5 */
+      --input: 318 42% 94%; /* #f2def5 */
+      --ring: 264 47% 39%; /* #673c8b */
+      
+      /* T3 Light specific colors */
+      --chat-input: 318 42% 94%; /* #f2def5 */
+      --chat-bubble-user: 333 86% 44%; /* #c51478 */
+      --chat-bubble-ai: 318 42% 94%; /* #f2def5 */
+      --sidebar: 318 58% 96%; /* #f5edfa */
+    }
 
-      .dark:root {
-        --background: 240 10% 3.9%;
-        --foreground: 0 0% 98%;
-        --card: 240 10% 3.9%;
-        --card-foreground: 0 0% 98%;
-        --popover: 240 10% 3.9%;
-        --popover-foreground: 0 0% 98%;
-        --primary: 0 0% 98%;
-        --primary-foreground: 240 5.9% 10%;
-        --secondary: 240 3.7% 15.9%;
-        --secondary-foreground: 0 0% 98%;
-        --muted: 240 3.7% 15.9%;
-        --muted-foreground: 240 5% 64.9%;
-        --accent: 240 3.7% 15.9%;
-        --accent-foreground: 0 0% 98%;
-        --destructive: 0 72% 51%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 240 3.7% 15.9%;
-        --input: 240 3.7% 15.9%;
-        --ring: 240 4.9% 83.9%;
-      }
-  }
+    .dark:root {
+      /* T3 Dark Theme Colors */
+      --background: 267 19% 11%; /* #1d1921 */
+      --foreground: 270 25% 87%; /* #d2c7e1 */
+      --card: 267 19% 11%; /* #1d1921 */
+      --card-foreground: 270 25% 87%; /* #d2c7e1 */
+      --popover: 270 19% 10%; /* #1a1419 */
+      --popover-foreground: 270 25% 87%; /* #d2c7e1 */
+      --primary: 270 25% 87%; /* #d2c7e1 */
+      --primary-foreground: 267 19% 11%; /* #1d1921 */
+      --secondary: 267 19% 16%; /* #2a2430 */
+      --secondary-foreground: 270 25% 87%; /* #d2c7e1 */
+      --muted: 267 19% 16%; /* #2a2430 */
+      --muted-foreground: 273 14% 49%; /* #7a6483 */
+      --accent: 267 19% 16%; /* #2a2430 */
+      --accent-foreground: 270 25% 87%; /* #d2c7e1 */
+      --destructive: 356 70% 61%; /* #d2626c */
+      --destructive-foreground: 270 25% 87%; /* #d2c7e1 */
+      --border: 267 19% 16%; /* #2a2430 */
+      --input: 267 19% 16%; /* #2a2430 */
+      --ring: 272 69% 72%; /* #baa4ed */
+      
+      /* T3 Dark specific colors */
+      --chat-input: 267 19% 16%; /* #2a2430 */
+      --chat-bubble-user: 338 89% 71%; /* #f888b5 */
+      --chat-bubble-ai: 267 19% 16%; /* #2a2430 */
+      --sidebar: 267 19% 11%; /* #1d1921 */
+      
+      /* Additional T3 Dark accent colors for future use */
+      --t3-blue: 201 100% 81%; /* #a2dbff */
+      --t3-green: 157 44% 72%; /* #96d0bb */
+      --t3-orange: 25 100% 79%; /* #ffbc9e */
+      --t3-purple: 262 61% 75%; /* #baa4ed */
+      --t3-pink: 295 71% 77%; /* #e8a5e4 */
+      --t3-cream: 270 14% 95%; /* #f2ebfa */
+    }
+}
