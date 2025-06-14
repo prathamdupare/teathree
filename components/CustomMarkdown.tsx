@@ -93,10 +93,10 @@ const rules: RenderRules = {
     <Code key={_node.key} className="font-mono text-sm bg-secondary/20 px-1.5 py-0.5 rounded">{children}</Code>
   ),
   list_item: (node: MarkdownNode, children: React.ReactNode) => (
-    <Li key={`li-${node.index}`} className="flex items-baseline gap-2 mb-1 last:mb-0">
-      <View className="w-1.5 h-1.5 mt-2 rounded-full bg-primary/50" />
+    <View key={`li-${node.index}`} className="flex-row items-start mb-1 last:mb-0 pl-4">
+      <Text className="text-primary mr-2 mt-1.5">•</Text>
       <View className="flex-1">{children}</View>
-    </Li>
+    </View>
   ),
   ordered_list: (_node: MarkdownNode, children: React.ReactNode) => (
     <Ol key="ol" className="space-y-1 mb-4 pl-4">{children}</Ol>

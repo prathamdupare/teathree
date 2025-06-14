@@ -1,4 +1,5 @@
 import { google } from "@ai-sdk/google"
+import { openai } from "@ai-sdk/openai"
 import { streamText } from 'ai';
 
 export async function POST(req: Request) {
@@ -33,7 +34,12 @@ export async function POST(req: Request) {
     });
 
     // Use text stream protocol for simpler handling
-    return result.toTextStreamResponse();
+    return result.toDataStreamResponse({
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'Content-Encoding': 'none',
+      },
+    });
 
   } catch (error) {
     console.error('Chat API Error:', error);

@@ -1,14 +1,12 @@
-import { generateAPIUrl } from './utils/utils';
 import { View, Text, SafeAreaView } from 'react-native';
 import { SignedIn, SignedOut, useUser } from '@clerk/clerk-expo';
 import { Link, useRouter } from 'expo-router';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
-import { api } from '~/convex/_generated/api';
+import { ChatHeader } from '~/components/chat';
+import { ChatContainer } from '~/components/chat/ChatContainer';
 import { Id } from '~/convex/_generated/dataModel';
-import { ChatHeader, ChatInput, MessageList } from '~/components/chat';
 
 const SUGGESTED_PROMPTS = [
   "How does AI work?",
@@ -25,116 +23,7 @@ const ACTION_BADGES = [
 export default function App() {
   const { user } = useUser();
   const router = useRouter();
-  const [input, setInput] = useState("");
-  const [selectedModel, setSelectedModel] = useState("Gemini 1.5 Flash");
   const [chatId, setChatId] = useState<Id<"chats"> | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const createChat = useMutation(api.chats.createChat);
-  const createStreamingMessage = useMutation(api.messages.createStreamingMessage);
-  const updateMessageContent = useMutation(api.messages.updateMessageContent);
-  const messages = useQuery(api.messages.getChatMessages, 
-    chatId ? { chatId } : 'skip'
-  );
-
-  const handleSubmit = async () => {
-    if (!input.trim() || !user?.id || isLoading) return;
-
-    const currentInput = input;
-    setInput(''); // Clear input immediately
-    setIsLoading(true);
-
-    try {
-      // Create new chat if needed
-      let targetChatId = chatId;
-      if (!targetChatId) {
-        targetChatId = await createChat({
-          title: currentInput.slice(0, 50) + (currentInput.length > 50 ? '...' : ''),
-          userId: user.id,
-          provider: 'google',
-        });
-        
-        // Update state and URL
-        setChatId(targetChatId);
-        window.history.pushState({}, '', `/chat/${targetChatId}`);
-      }
-
-      // Save user message
-      await createStreamingMessage({
-        chatId: targetChatId,
-        role: 'user',
-        content: currentInput,
-        isComplete: true,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-
-      // Create initial AI message
-      const aiMessageId = await createStreamingMessage({
-        chatId: targetChatId,
-        role: 'assistant',
-        content: '',
-        provider: 'google',
-        model: 'gemini-1.5-flash',
-        isComplete: false,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-
-      // Make API call
-      const response = await fetch(generateAPIUrl('/api/chat'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            ...(messages?.map(m => ({ role: m.role, content: m.content })) || []),
-            { role: 'user', content: currentInput }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('API call failed');
-      }
-
-      // Handle streaming response
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let content = '';
-
-      if (reader) {
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value);
-            content += chunk;
-
-            // Update message content as we receive it
-            await updateMessageContent({
-              messageId: aiMessageId,
-              content: content,
-            });
-          }
-        } finally {
-          reader.releaseLock();
-        }
-
-        // Mark the message as complete
-        await updateMessageContent({
-          messageId: aiMessageId,
-          content: content || 'I apologize, but I was unable to generate a response.',
-          isComplete: true,
-        });
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      setInput(currentInput); // Restore input on error
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Show empty state UI
   const EmptyState = () => (
@@ -163,7 +52,7 @@ export default function App() {
               variant="ghost"
               className="w-full justify-start p-4 h-auto bg-secondary/30 border border-border rounded-xl"
               onPress={() => {
-                setInput(prompt);
+                // TODO: Handle prompt selection
               }}
             >
               <Text className="text-foreground text-left">{prompt}</Text>
@@ -174,30 +63,19 @@ export default function App() {
     </View>
   );
 
-  const chatTitle = chatId 
-    ? (messages?.[0]?.content.slice(0, 50) || 'Chat') 
-    : 'T3.chat';
-
   return (
     <SafeAreaView className="flex-1 bg-background">
       <SignedIn>
-        <ChatHeader title={chatTitle} />
-
-        <View className="flex-1">
-          {!chatId ? (
-            <EmptyState />
-          ) : (
-            <MessageList messages={messages} />
-          )}
-        </View>
-
-        <ChatInput
-          input={input}
-          onInputChange={setInput}
-          onSubmit={handleSubmit}
-          selectedModel={selectedModel}
-          isLoading={isLoading}
-        />
+        <ChatHeader title={chatId ? 'Chat' : 'T3.chat'} />
+        <ChatContainer 
+          chatId={chatId} 
+          onChatCreated={(newChatId) => {
+            setChatId(newChatId);
+            router.push(`/chat/${newChatId}`);
+          }}
+        >
+          {!chatId && <EmptyState />}
+        </ChatContainer>
       </SignedIn>
 
       <SignedOut>

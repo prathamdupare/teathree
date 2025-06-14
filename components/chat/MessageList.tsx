@@ -1,6 +1,6 @@
-import { View, Text, ScrollView } from "react-native";
-import { CustomMarkdown } from "../CustomMarkdown";
+import { View, ScrollView } from "react-native";
 import type { Message } from "~/types";
+import { CustomMarkdown } from "../CustomMarkdown";
 
 interface MessageListProps {
   messages?: Message[];
@@ -12,41 +12,27 @@ export function MessageList({ messages, contentContainerStyle }: MessageListProp
 
   return (
     <ScrollView 
-      className="flex-1"
-      contentContainerStyle={{ 
-        paddingBottom: 16,
-        ...contentContainerStyle 
-      }}
+      className="flex-1 space-y-4"
+      contentContainerStyle={contentContainerStyle}
     >
-      <View className="w-full max-w-[768px] mx-auto px-4">
-        {messages.map((message) => (
-          <View
-            key={message._id}
-            className={`mb-8 flex ${
-              message.role === 'user' ? 'items-end' : 'items-start'
-            }`}
+      {messages.map((message) => (
+        <View 
+          key={message._id} 
+          className={`flex flex-row ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+        >
+          <View 
+            className={`
+              max-w-[85%] rounded-2xl p-4
+              ${message.role === 'user' 
+                ? 'bg-muted rounded-br-none' 
+                : 'bg-background rounded-bl-none'
+              }
+            `}
           >
-            <View className="flex-row items-start gap-3">
-              {message.role === 'assistant' && (
-                <View className="h-8 w-8 rounded-lg bg-primary/10 items-center justify-center">
-                  <Text className="text-primary font-medium">AI</Text>
-                </View>
-              )}
-              <View className="flex-1 max-w-[90%]">
-                <CustomMarkdown content={message.content} />
-                <Text className="text-xs text-muted-foreground mt-1">
-                  {message.role === 'user' ? 'You' : 'Assistant'}
-                </Text>
-              </View>
-              {message.role === 'user' && (
-                <View className="h-8 w-8 rounded-lg bg-primary/10 items-center justify-center">
-                  <Text className="text-primary font-medium">You</Text>
-                </View>
-              )}
-            </View>
+            <CustomMarkdown content={message.content} />
           </View>
-        ))}
-      </View>
+        </View>
+      ))}
     </ScrollView>
   );
 } 
