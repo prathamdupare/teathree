@@ -1,9 +1,9 @@
 @tailwind base;
-@tailwind components;
-@tailwind utilities;
+  @tailwind components;
+  @tailwind utilities;
 
-@layer base {
-    :root {
+  @layer base {
+      :root {
       /* T3 Light Theme Colors */
       --background: 318 58% 96%; /* #f5edfa */
       --foreground: 264 47% 39%; /* #673c8b */
@@ -30,9 +30,9 @@
       --chat-bubble-user: 333 86% 44%; /* #c51478 */
       --chat-bubble-ai: 318 42% 94%; /* #f2def5 */
       --sidebar: 318 58% 96%; /* #f5edfa */
-    }
+      }
 
-    .dark:root {
+      .dark:root {
       /* T3 Dark Theme Colors */
       --background: 267 19% 11%; /* #1d1921 */
       --foreground: 270 25% 87%; /* #d2c7e1 */
@@ -67,5 +67,5 @@
       --t3-purple: 262 61% 75%; /* #baa4ed */
       --t3-pink: 295 71% 77%; /* #e8a5e4 */
       --t3-cream: 270 14% 95%; /* #f2ebfa */
-    }
-}
+      }
+  }

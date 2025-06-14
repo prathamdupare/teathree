@@ -1,14 +1,14 @@
 import { generateAPIUrl } from './utils/utils';
-import { useChat } from '@ai-sdk/react';
-import { fetch as expoFetch } from 'expo/fetch';
-import { View, TextInput, ScrollView, Text, SafeAreaView, Platform } from 'react-native';
+import { View, Text, SafeAreaView } from 'react-native';
 import { SignedIn, SignedOut, useUser } from '@clerk/clerk-expo';
-import { SignOutButton } from '~/components/SignOutButton';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
-import { ThemeToggle } from '~/components/ui/theme-toggle';
 import { useState } from 'react';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '~/convex/_generated/api';
+import { Id } from '~/convex/_generated/dataModel';
+import { ChatHeader, ChatInput, MessageList } from '~/components/chat';
 
 const SUGGESTED_PROMPTS = [
   "How does AI work?",
@@ -20,42 +20,123 @@ const SUGGESTED_PROMPTS = [
 const ACTION_BADGES = [
   { label: "Create", icon: "✨" },
   { label: "Explore", icon: "🔍" },
-  { label: "Code", icon: "💻" },
-  { label: "Learn", icon: "📚" }
 ];
 
 export default function App() {
   const { user } = useUser();
+  const router = useRouter();
+  const [input, setInput] = useState("");
   const [selectedModel, setSelectedModel] = useState("Gemini 1.5 Flash");
+  const [chatId, setChatId] = useState<Id<"chats"> | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   
-  const { messages, error, handleInputChange, input, handleSubmit } = useChat({
-    fetch: expoFetch as unknown as typeof globalThis.fetch,
-    api: generateAPIUrl('/api/chat'),
-    streamProtocol: 'data',
-    onError: error => {
-      console.error('Chat Error:', error);
-      console.error('Error details:', error.message);
-    },
-    onFinish: (message) => {
-      console.log('Message completed:', message);
-    },
-  });
+  const createChat = useMutation(api.chats.createChat);
+  const createStreamingMessage = useMutation(api.messages.createStreamingMessage);
+  const updateMessageContent = useMutation(api.messages.updateMessageContent);
+  const messages = useQuery(api.messages.getChatMessages, 
+    chatId ? { chatId } : 'skip'
+  );
 
-  if (error) {
-    return (
-      <SafeAreaView className="flex-1 bg-background">
-        <View className="flex-1 items-center justify-center p-4">
-          <Text className="text-destructive text-lg font-semibold mb-2">
-            Error: {error.message}
-          </Text>
-          <Text className="text-muted-foreground text-sm text-center">
-            Please check your API configuration and try again.
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const handleSubmit = async () => {
+    if (!input.trim() || !user?.id || isLoading) return;
 
+    const currentInput = input;
+    setInput(''); // Clear input immediately
+    setIsLoading(true);
+
+    try {
+      // Create new chat if needed
+      let targetChatId = chatId;
+      if (!targetChatId) {
+        targetChatId = await createChat({
+          title: currentInput.slice(0, 50) + (currentInput.length > 50 ? '...' : ''),
+          userId: user.id,
+          provider: 'google',
+        });
+        
+        // Update state and URL
+        setChatId(targetChatId);
+        window.history.pushState({}, '', `/chat/${targetChatId}`);
+      }
+
+      // Save user message
+      await createStreamingMessage({
+        chatId: targetChatId,
+        role: 'user',
+        content: currentInput,
+        isComplete: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      // Create initial AI message
+      const aiMessageId = await createStreamingMessage({
+        chatId: targetChatId,
+        role: 'assistant',
+        content: '',
+        provider: 'google',
+        model: 'gemini-1.5-flash',
+        isComplete: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      // Make API call
+      const response = await fetch(generateAPIUrl('/api/chat'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            ...(messages?.map(m => ({ role: m.role, content: m.content })) || []),
+            { role: 'user', content: currentInput }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('API call failed');
+      }
+
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let content = '';
+
+      if (reader) {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            content += chunk;
+
+            // Update message content as we receive it
+            await updateMessageContent({
+              messageId: aiMessageId,
+              content: content,
+            });
+          }
+        } finally {
+          reader.releaseLock();
+        }
+
+        // Mark the message as complete
+        await updateMessageContent({
+          messageId: aiMessageId,
+          content: content || 'I apologize, but I was unable to generate a response.',
+          isComplete: true,
+        });
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setInput(currentInput); // Restore input on error
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Show empty state UI
   const EmptyState = () => (
     <View className="flex-1 items-center justify-center p-8">
       <View className="max-w-2xl w-full">
@@ -82,9 +163,7 @@ export default function App() {
               variant="ghost"
               className="w-full justify-start p-4 h-auto bg-secondary/30 border border-border rounded-xl"
               onPress={() => {
-                handleInputChange({
-                  target: { value: prompt }
-                } as any);
+                setInput(prompt);
               }}
             >
               <Text className="text-foreground text-left">{prompt}</Text>
@@ -95,107 +174,30 @@ export default function App() {
     </View>
   );
 
+  const chatTitle = chatId 
+    ? (messages?.[0]?.content.slice(0, 50) || 'Chat') 
+    : 'T3.chat';
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <SignedIn>
-        {/* Header */}
-        <View className="flex-row items-center justify-between p-4 border-b border-border">
-          <Text className="text-xl font-semibold text-foreground">T3.chat</Text>
-          <View className="flex-row items-center gap-3">
-            <ThemeToggle />
-            <SignOutButton />
-          </View>
-        </View>
+        <ChatHeader title={chatTitle} />
 
-        {/* Main Content */}
         <View className="flex-1">
-          {messages.length === 0 ? (
+          {!chatId ? (
             <EmptyState />
           ) : (
-            <ScrollView 
-              className="flex-1 px-4"
-              contentContainerStyle={{ paddingVertical: 16 }}
-            >
-              {messages.map((message) => (
-                <View
-                  key={message.id}
-                  className={`mb-6 ${
-                    message.role === 'user' ? 'items-end' : 'items-start'
-                  }`}
-                >
-                  <View
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                      message.role === 'user'
-                        ? 'bg-[hsl(var(--chat-bubble-user))] ml-auto'
-                        : 'bg-secondary mr-auto'
-                    }`}
-                  >
-                    <Text
-                      className={`text-sm leading-6 ${
-                        message.role === 'user'
-                          ? 'text-white'
-                          : 'text-foreground'
-                      }`}
-                    >
-                      {message.content}
-                    </Text>
-                  </View>
-                  <Text className="text-xs text-muted-foreground mt-1 px-1">
-                    {message.role === 'user' ? 'You' : 'AI'}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
+            <MessageList messages={messages} />
           )}
         </View>
 
-        {/* Input Area */}
-        <View className="p-4 border-t border-border">
-          <View className="flex-row items-end gap-3">
-            {/* Model Display (simplified) */}
-            <View className="min-w-[140px]">
-              <View className="h-12 bg-secondary border border-border rounded-lg px-3 py-2 justify-center">
-                <Text className="text-foreground text-sm font-medium">
-                  {selectedModel}
-                </Text>
-              </View>
-            </View>
-
-            {/* Message Input */}
-            <View className="flex-1">
-              <View className="relative">
-                <TextInput
-                  className="bg-secondary border border-border rounded-xl px-4 py-3 pr-12 text-foreground placeholder:text-muted-foreground min-h-[48px] text-base"
-                  placeholder="Type your message here..."
-                  value={input}
-                  onChangeText={(text) =>
-                    handleInputChange({
-                      target: { value: text }
-                    } as any)
-                  }
-                  onSubmitEditing={(e) => {
-                    handleSubmit(e as any);
-                  }}
-                  multiline
-                  style={{
-                    maxHeight: 120,
-                    textAlignVertical: 'top',
-                  }}
-                />
-                
-                {/* Send Button */}
-                <Button
-                  onPress={() => handleSubmit()}
-                  disabled={!input.trim()}
-                  className="absolute right-2 bottom-2 w-8 h-8 rounded-lg bg-primary disabled:opacity-50"
-                  size="icon"
-                >
-                  <Text className="text-primary-foreground">↑</Text>
-                </Button>
-              </View>
-            </View>
-          </View>
-        </View>
+        <ChatInput
+          input={input}
+          onInputChange={setInput}
+          onSubmit={handleSubmit}
+          selectedModel={selectedModel}
+          isLoading={isLoading}
+        />
       </SignedIn>
 
       <SignedOut>
@@ -210,7 +212,6 @@ export default function App() {
             Please sign in to start chatting with AI
           </Text>
           
-          {/* Debug: Test navigation */}
           <View className="gap-4">
             <Link href="/sign-in" asChild>
               <Button className="px-8 py-3">
@@ -219,17 +220,6 @@ export default function App() {
                 </Text>
               </Button>
             </Link>
-            
-            {/* Debug button to test if buttons work */}
-            <Button 
-              variant="outline"
-              onPress={() => {
-                console.log('Debug button pressed - buttons are working!')
-                alert('Button works! Issue might be with navigation.')
-              }}
-            >
-              <Text className="text-foreground">Test Button (Debug)</Text>
-            </Button>
           </View>
         </View>
       </SignedOut>

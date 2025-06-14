@@ -27,12 +27,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const result = streamText({
+    const result = await streamText({
       model: google('gemini-1.5-flash'),
       messages,
     });
 
-    return result.toDataStreamResponse();
+    // Use text stream protocol for simpler handling
+    return result.toTextStreamResponse();
+
   } catch (error) {
     console.error('Chat API Error:', error);
     return new Response(

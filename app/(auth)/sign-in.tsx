@@ -91,7 +91,7 @@ export default function Page() {
         <Text className="text-sm text-muted-foreground text-center mt-6">
           By signing in, you agree to our Terms of Service
         </Text>
-      </View>
+    </View>
     </SafeAreaView>
   )
 }

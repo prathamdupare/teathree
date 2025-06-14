@@ -8,31 +8,11 @@ import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Avatar } from '~/components/ui/avatar';
 import { ThemeToggle } from '~/components/ui/theme-toggle';
+import { useQuery } from 'convex/react';
+import { api } from '~/convex/_generated/api';
+import { formatDistanceToNow } from 'date-fns';
 
-// Mock chat data - replace with real data later
-const MOCK_CHATS = {
-  pinned: [
-    { id: '1', title: 'Windsurf commands in Arch L...', time: '2h ago' },
-    { id: '2', title: 'extra psychopg', time: '4h ago' },
-  ],
-  today: [
-    { id: '3', title: 'Greeting', time: '1h ago' },
-    { id: '4', title: 'JSON Generation', time: '3h ago' },
-    { id: '5', title: 'Working great and birthday w...', time: '5h ago' },
-    { id: '6', title: 'Google OAuth with Clerk and ...', time: '6h ago' },
-  ],
-  yesterday: [
-    { id: '7', title: 'AI Chat App with Expo, Clerk,...', time: 'Yesterday' },
-    { id: '8', title: 'Next.js Route Creation with S ...', time: 'Yesterday' },
-    { id: '9', title: 'Habit Creation API Fixes and ...', time: 'Yesterday' },
-    { id: '10', title: 'Tailwind CSS Backdrop Blur a...', time: 'Yesterday' },
-    { id: '11', title: 'Convex integration branch na...', time: 'Yesterday' },
-    { id: '12', title: 'Greeting', time: 'Yesterday' },
-    { id: '13', title: 'AI safety and control', time: 'Yesterday' },
-  ],
-};
-
-function ChatItem({ title, onPress }: { title: string; onPress: () => void }) {
+function ChatItem({ title, onPress, id }: { title: string; onPress: () => void; id: string }) {
   return (
     <Pressable
       onPress={onPress}
@@ -45,7 +25,9 @@ function ChatItem({ title, onPress }: { title: string; onPress: () => void }) {
   );
 }
 
-function ChatSection({ title, chats }: { title: string; chats: typeof MOCK_CHATS.today }) {
+function ChatSection({ title, chats }: { title: string; chats: any[] }) {
+  if (!chats?.length) return null;
+  
   return (
     <View className="mb-6">
       <Text className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-3">
@@ -54,11 +36,11 @@ function ChatSection({ title, chats }: { title: string; chats: typeof MOCK_CHATS
       <View className="space-y-1">
         {chats.map((chat) => (
           <ChatItem
-            key={chat.id}
-            title={chat.title}
+            key={chat._id}
+            id={chat._id}
+            title={chat.title || 'Untitled Chat'}
             onPress={() => {
-              // Navigate to specific chat - implement later
-              router.push('/');
+              router.push(`/chat/${chat._id}`);
             }}
           />
         ))}
@@ -70,6 +52,32 @@ function ChatSection({ title, chats }: { title: string; chats: typeof MOCK_CHATS
 export function CustomDrawerContent(props: any) {
   const { user } = useUser();
   const { signOut } = useAuth();
+  const chats = useQuery(api.chats.getUserChats, 
+    user?.id ? { userId: user.id } : "skip"
+  );
+
+  // Organize chats by date
+  const organizedChats = React.useMemo(() => {
+    if (!chats) return { today: [], yesterday: [], older: [] };
+
+    const now = Date.now();
+    const todayStart = new Date().setHours(0, 0, 0, 0);
+    const yesterdayStart = todayStart - 24 * 60 * 60 * 1000;
+
+    return chats.reduce((acc: any, chat) => {
+      const chatDate = chat._creationTime;
+
+      if (chatDate >= todayStart) {
+        acc.today.push(chat);
+      } else if (chatDate >= yesterdayStart) {
+        acc.yesterday.push(chat);
+      } else {
+        acc.older.push(chat);
+      }
+
+      return acc;
+    }, { today: [], yesterday: [], older: [] });
+  }, [chats]);
 
   return (
     <View className="flex-1 bg-background">
@@ -98,9 +106,11 @@ export function CustomDrawerContent(props: any) {
 
       {/* Chat History */}
       <ScrollView className="flex-1 p-2">
-        <ChatSection title="📌 Pinned" chats={MOCK_CHATS.pinned} />
-        <ChatSection title="Today" chats={MOCK_CHATS.today} />
-        <ChatSection title="Yesterday" chats={MOCK_CHATS.yesterday} />
+        <ChatSection title="Today" chats={organizedChats.today} />
+        <ChatSection title="Yesterday" chats={organizedChats.yesterday} />
+        {organizedChats.older.length > 0 && (
+          <ChatSection title="Previous" chats={organizedChats.older} />
+        )}
       </ScrollView>
 
       {/* Bottom Section */}
@@ -136,4 +146,4 @@ export function CustomDrawerContent(props: any) {
       </View>
     </View>
   );
-} 
+}
