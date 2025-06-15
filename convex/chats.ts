@@ -6,12 +6,14 @@ export const createChat = mutation({
         title: v.string(),
         userId: v.string(),
         provider: v.string(),
+        model: v.string(),
     },
     handler: async (ctx, args) => {
         const chatId = await ctx.db.insert("chats", {
             title: args.title,
             userId: args.userId,
             currentProvider: args.provider,
+            currentModel: args.model,
             createdAt: Date.now(),
             updatedAt: Date.now(),
             isArchived: false,
@@ -43,10 +45,12 @@ export const updateChatProvider = mutation({
     args: {
         chatId: v.id("chats"),
         provider: v.string(),
+        model: v.string(),
     },
     handler: async (ctx, args) => {
         await ctx.db.patch(args.chatId, {
             currentProvider: args.provider,
+            currentModel: args.model,
             updatedAt: Date.now(),
         });
     }

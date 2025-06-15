@@ -1,12 +1,15 @@
 import { View, TextInput, Text, Pressable, useColorScheme } from "react-native";
 import { BlurView } from 'expo-blur';
 import { memo } from "react";
+import { ModelSelector } from './ModelSelector';
 
 interface ChatInputProps {
   input: string;
   onInputChange: (text: string) => void;
   onSubmit: () => void;
-  selectedModel?: string;
+  selectedModel: string;
+  selectedProvider: string;
+  onModelSelect: (provider: string, model: string) => void;
   isLoading?: boolean;
 }
 
@@ -14,7 +17,9 @@ export const ChatInput = memo(({
   input,
   onInputChange,
   onSubmit,
-  selectedModel = "GPT-4.1",
+  selectedProvider,
+  selectedModel,
+  onModelSelect,
   isLoading = false,
 }: ChatInputProps) => {
   const colorScheme = useColorScheme();
@@ -63,9 +68,11 @@ export const ChatInput = memo(({
           
           <View className="flex-row items-center justify-between px-4 pb-3">
             <View className="flex-row items-center gap-3">
-              <Text className="text-muted-foreground text-sm">
-                {selectedModel}
-              </Text>
+              <ModelSelector
+                selectedProvider={selectedProvider}
+                selectedModel={selectedModel}
+                onModelSelect={onModelSelect}
+              />
               <Pressable>
                 <Text className="text-muted-foreground text-base">📎</Text>
               </Pressable>
