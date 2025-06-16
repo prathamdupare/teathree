@@ -1,6 +1,7 @@
-import { View, TextInput, Text, Pressable, useColorScheme } from "react-native";
-import { BlurView } from 'expo-blur';
+import { View, TextInput, Text, Pressable } from "react-native";
 import { memo } from "react";
+import { Button } from '~/components/ui/button';
+import { Ionicons } from '@expo/vector-icons';
 import { ModelSelector } from './ModelSelector';
 
 interface ChatInputProps {
@@ -22,7 +23,6 @@ export const ChatInput = memo(({
   onModelSelect,
   isLoading = false,
 }: ChatInputProps) => {
-  const colorScheme = useColorScheme();
   const canSubmit = input.trim().length > 0 && !isLoading;
 
   const handleSubmit = (e?: any) => {
@@ -36,61 +36,54 @@ export const ChatInput = memo(({
   };
 
   return (
-    <View className="absolute bottom-0 left-0 right-0 items-center">
-      <View className="h-[1px]" />
-      <View className="w-full max-w-[768px]">
-        <BlurView 
-          intensity={90} 
-          className="rounded-lg bg-secondary border border-border shadow-md"
-          tint={colorScheme === 'dark' ? 'dark' : 'light'}
-        >
+    <View className="absolute bottom-0 left-0 right-0 bg-[#fcf3fc] dark:bg-[#2a242f] border-t border-[hsl(var(--border-color))] rounded-t-2xl">
+      <View className="max-w-4xl mx-auto w-full px-4 py-3">
+        <View className="relative">
           <TextInput
-            className="text-foreground text-base px-4 py-3 pb-2"
+            className="w-full text-base rounded-2xl px-4 py-3 bg-[#fcf3fc] dark:bg-[#2a242f] text-[hsl(var(--text-primary))] border border-[hsl(var(--input-border))]"
             placeholder="Type your message here..."
             value={input}
-            onChangeText={(text) => 
-              onInputChange(text)
-            }
+            onChangeText={onInputChange}
             onKeyPress={handleSubmit}
-            multiline={false}
+            multiline={true}
             blurOnSubmit={false}
             returnKeyType="send"
             enablesReturnKeyAutomatically={true}
-            placeholderTextColor="rgba(255,255,255,0.4)"
             style={{ 
               textAlignVertical: 'center',
+              minHeight: 48,
+              maxHeight: 200
             }}
+            placeholderTextColor="#6b6b6b"
             autoCorrect={false}
             spellCheck={false}
             editable={!isLoading}
-            autoFocus={true}
           />
-          
-          <View className="flex-row items-center justify-between px-4 pb-3">
-            <View className="flex-row items-center gap-3">
-              <ModelSelector
-                selectedProvider={selectedProvider}
-                selectedModel={selectedModel}
-                onModelSelect={onModelSelect}
-              />
-              <Pressable>
-                <Text className="text-muted-foreground text-base">📎</Text>
-              </Pressable>
-            </View>
-            
+          {input && (
             <Pressable 
-              className={`w-8 h-8 rounded-lg items-center justify-center ${
-                canSubmit ? 'bg-primary' : 'bg-muted'
-              }`}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 rounded-xl w-8 h-8 items-center justify-center bg-[hsl(var(--primary-accent))]"
               onPress={() => handleSubmit()}
               disabled={!canSubmit}
             >
-              <Text className="text-primary-foreground text-lg">
-                {isLoading ? "..." : "↑"}
-              </Text>
+              <Ionicons name="arrow-up" size={16} color="white" />
             </Pressable>
-          </View>
-        </BlurView>
+          )}
+        </View>
+        <View className="flex-row items-center gap-2 mt-2">
+          <ModelSelector
+            selectedProvider={selectedProvider}
+            selectedModel={selectedModel}
+            onModelSelect={onModelSelect}
+          />
+          <Button
+            variant="ghost"
+            className="flex-row items-center gap-1 px-2 py-1 rounded-lg bg-transparent"
+            onPress={() => {}}
+          >
+            <Ionicons name="attach" size={14} color="#6b6b6b" />
+            <Text className="text-sm text-[hsl(var(--secondary-accent))]">Attach</Text>
+          </Button>
+        </View>
       </View>
     </View>
   );

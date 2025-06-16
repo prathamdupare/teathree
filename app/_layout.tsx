@@ -1,5 +1,5 @@
 import '~/app/globals.css';
-
+import '~/app/utils/polyfills';
 import { Theme, ThemeProvider, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { Drawer } from 'expo-router/drawer';
 import { StatusBar } from 'expo-status-bar';
@@ -43,6 +43,7 @@ function DrawerToggleButton() {
     >
       <Text style={{ 
         fontSize: 18, 
+      
         color: isDarkColorScheme ? NAV_THEME.dark.text : NAV_THEME.light.text 
       }}>
         ☰
@@ -101,6 +102,7 @@ export default function RootLayout() {
               <Drawer
                 drawerContent={(props) => <CustomDrawerContent {...props} />}
                 screenOptions={{
+                  headerShown: false,
                   drawerType: Platform.OS === 'web' ? 'permanent' : 'slide',
                   drawerStyle: {
                     width: 250,
@@ -110,18 +112,14 @@ export default function RootLayout() {
                   swipeEnabled: Platform.OS !== 'web',
                   drawerActiveTintColor: isDarkColorScheme ? NAV_THEME.dark.primary : NAV_THEME.light.primary,
                   drawerInactiveTintColor: isDarkColorScheme ? NAV_THEME.dark.text : NAV_THEME.light.text,
-                  headerLeft: Platform.OS === 'web' ? () => <DrawerToggleButton /> : undefined,
                 }}
                 initialRouteName="index"
               >
                 <Drawer.Screen
                   name="index"
                   options={{
-                    drawerLabel: 'Home',
-                    title: 'Home',
-                    drawerItemStyle: Platform.OS === 'web' ? { 
-                      marginVertical: 4,
-                    } : undefined,
+                    headerShown: false,
+                    drawerItemStyle: { display: 'none' },
                   }}
                 />
                 <Drawer.Screen
@@ -132,6 +130,13 @@ export default function RootLayout() {
                     drawerItemStyle: Platform.OS === 'web' ? { 
                       marginVertical: 4,
                     } : undefined,
+                  }}
+                />
+                <Drawer.Screen
+                  name="chat/[id]"
+                  options={{
+                    headerShown: false,
+                    drawerItemStyle: { display: 'none' },
                   }}
                 />
               </Drawer>

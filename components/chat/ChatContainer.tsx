@@ -12,18 +12,7 @@ import type { PropsWithChildren } from 'react';
 import { CustomMarkdown } from '../CustomMarkdown';
 import { ChatInput } from './ChatInput';
 import { AI_PROVIDERS } from "~/lib/ai-providers";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '~/components/ui/dropdown-menu';
-import { Button } from '~/components/ui/button';
-import Animated, { FadeIn } from 'react-native-reanimated';
-import { ModelSelector } from './ModelSelector';
+import { generateChatTitle } from '~/convex/chats';
 
 interface ChatContainerProps {
   chatId: Id<"chats"> | null;
@@ -42,6 +31,7 @@ export function ChatContainer({
   const lastUpdateRef = useRef<string>('');
   const createStreamingMessage = useMutation(api.messages.createStreamingMessage);
   const updateMessageContent = useMutation(api.messages.updateMessageContent);
+  const generateChatTitle = useMutation(api.chats.generateChatTitle);
   const createChat = useMutation(api.chats.createChat);
   const convexMessages = useQuery(api.messages.getChatMessages, 
     chatId ? { chatId } : 'skip'
@@ -67,6 +57,7 @@ export function ChatContainer({
   }, [chat]);
 
   const updateChatProvider = useMutation(api.chats.updateChatProvider);
+  const updateChatTitle = useMutation(api.chats.updateChatTitle);
   
   const handleProviderModelChange = async (provider: string, model: string) => {
     setSelectedProvider(provider);
@@ -97,7 +88,6 @@ export function ChatContainer({
     onError: error => console.error(error, 'ERROR'),
   });
 
-  // Sync local state with Convex messages while preserving optimistic updates
   useEffect(() => {
     if (!convexMessages) {
       setLocalMessages([]);
@@ -105,7 +95,6 @@ export function ChatContainer({
     }
 
     setLocalMessages(prev => {
-      // Keep optimistic messages during streaming
       if (isStreamingLoading && currentAiMessageId) {
         const optimisticAiMessage = prev.find(msg => msg.role === 'assistant' && !msg.isComplete);
         if (optimisticAiMessage) {
@@ -123,7 +112,6 @@ export function ChatContainer({
 
     const timestamp = Date.now();
     
-    // Create optimistic messages
     const optimisticUserMessage = {
       _id: `temp-user-${timestamp}`,
       role: 'user',
@@ -150,11 +138,46 @@ export function ChatContainer({
       let targetChatId = chatId;
       if (!targetChatId) {
         targetChatId = await createChat({
-          title: streamingInput.slice(0, 50) + (streamingInput.length > 50 ? '...' : ''),
+          title: 'New Chat',
           userId: user.id,
           provider: selectedProvider,
           model: selectedModel,
         });
+
+        try {
+          // Generate title using the new API
+          const titleResponse = await fetch(generateAPIUrl('/api/gettitle'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: streamingInput,
+              provider: 'openai',
+              model: 'gpt-3.5-turbo'
+            })
+          });
+          
+          const data = await titleResponse.json();
+          console.log('Title API response:', data);
+          
+          if (data.error) {
+            console.error('Title generation failed:', data.error);
+            throw new Error(data.details || data.error);
+          }
+
+          if (data.title) {
+            await updateChatTitle({
+              chatId: targetChatId,
+              title: data.title
+            });
+          }
+        } catch (error) {
+          console.error('Failed to generate/update title:', error);
+          // Use a simple title as fallback
+          await updateChatTitle({
+            chatId: targetChatId,
+            title: streamingInput.slice(0, 30) + '...'
+          });
+        }
         
         onChatCreated?.(targetChatId);
       }
@@ -230,29 +253,26 @@ export function ChatContainer({
   }, [streamingMessages, isStreamingLoading, currentAiMessageId]);
 
   return (
-    <View className="flex-1 flex-col px-4 max-w-3xl mx-auto w-full">
-      <ModelSelector 
-        selectedProvider={selectedProvider}
-        selectedModel={selectedModel}
-        onModelSelect={handleProviderModelChange}
-      />
-      {children}
-      <View className="flex-1">
-        <MessageList messages={localMessages} />
+    <View className="flex-1 flex flex-col bg-[#f8f2f8] dark:bg-[#221d27] border-t-[10px] border-[#f5dbef] dark:border-[#181217] rounded-t-lg">
+      <View className="max-w-4xl mx-auto w-full flex-1">
+        {children}
+        <View className="flex-1">
+          <MessageList messages={localMessages} />
+        </View>
+        <ChatInput
+          input={streamingInput}
+          onInputChange={(text) =>
+            handleInputChange({
+              target: { value: text },
+            } as unknown as React.ChangeEvent<HTMLInputElement>)
+          }
+          onSubmit={handleSubmit}
+          isLoading={isStreamingLoading}
+          selectedProvider={selectedProvider}
+          selectedModel={selectedModel}
+          onModelSelect={handleProviderModelChange}
+        />
       </View>
-      <ChatInput
-        input={streamingInput}
-        onInputChange={(text) =>
-          handleInputChange({
-            target: { value: text },
-          } as unknown as React.ChangeEvent<HTMLInputElement>)
-        }
-        onSubmit={handleSubmit}
-        isLoading={isStreamingLoading}
-        selectedProvider={selectedProvider}
-        selectedModel={selectedModel}
-        onModelSelect={handleProviderModelChange}
-      />
     </View>
   );
 } 

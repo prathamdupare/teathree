@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { generateAPIUrl } from "../app/utils/utils";
 
 export const createChat = mutation({
     args: {
@@ -66,5 +67,69 @@ export const updateChatTitle = mutation({
             title: args.title,
             updatedAt: Date.now(),
         });
+    }
+})
+
+export const generateChatTitle= mutation({
+    args: {
+        chatId: v.id("chats"),
+        userMessage: v.string(),
+        provider: v.string(),
+        model: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const prompt = `Based on this user message, generate a very short, concise title (max 5 words) that captures the main topic or intent. Don't use quotes. Message: "${args.userMessage}"`;
+        try{
+
+            const response = await fetch(generateAPIUrl('/api/chat'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    messages: [
+                        {
+                            role: 'user',
+                            content: prompt,
+                        },
+                    ],
+                    provider: args.provider,
+                    model: args.model,
+                }),
+            });
+
+            const data = await response.json();
+            let title = data.content || 'New Chat';
+
+            title = title.replace(/^"|"$/g, '').trim();
+            if (title.length < 3) {
+                if (args.userMessage.toLowerCase().includes('hi') || 
+                    args.userMessage.toLowerCase().includes('hello')) {
+                    title = 'Greeting Chat';
+                } else {
+                    title = `Chat about "${args.userMessage.slice(0, 20)}"`;
+                }
+            }
+
+            await ctx.db.patch(args.chatId, {
+                title,
+                updatedAt: Date.now(),
+            });
+
+            
+        } catch (error) {
+            // Fallback to basic title if AI generation fails
+            const fallbackTitle = args.userMessage
+                .split('\n')[0]
+                .slice(0, 50)
+                .trim();
+            
+            await ctx.db.patch(args.chatId, {
+                title: fallbackTitle,
+                updatedAt: Date.now(),
+            });
+
+            return fallbackTitle;
+        }
     }
 })

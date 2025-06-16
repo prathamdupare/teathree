@@ -9,7 +9,6 @@ export default function ChatPage() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <ChatHeader title="Chat" />
       <ChatContainer chatId={id} />
     </SafeAreaView>
   );

@@ -9,11 +9,7 @@ interface MessageListProps {
 }
 
 const TypingIndicator = () => (
-  <View className="flex-row gap-1 items-center">
-    <View className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: '0ms' }} />
-    <View className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: '200ms' }} />
-    <View className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: '400ms' }} />
-  </View>
+  <Text className="text-[hsl(var(--text-muted))]">...</Text>
 );
 
 const MessageItem = memo(({ message }: { message: Message }) => {
@@ -23,22 +19,28 @@ const MessageItem = memo(({ message }: { message: Message }) => {
 
   return (
     <View 
-      className={`flex flex-row ${isAI ? 'justify-start' : 'justify-end'}`}
+      className={`flex flex-row ${isAI ? 'justify-start' : 'justify-end'} mb-6`}
       style={{ opacity: isOptimistic ? 0.7 : 1 }}
     >
       <View 
-        className={`
-          max-w-[85%] rounded-2xl p-4
-          ${isAI 
-            ? 'bg-background rounded-bl-none' 
-            : 'bg-muted rounded-br-none'
-          }
-        `}
+        className={`max-w-[85%] rounded-2xl p-4 ${
+          isAI 
+            ? 'rounded-bl-none bg-transparent' 
+            : 'rounded-br-none bg-[#f5dbef] dark:bg-[#2b2431]'
+        }`}
       >
         {message.content === '...' && isAI && isLoading ? (
           <TypingIndicator />
         ) : (
-          <CustomMarkdown content={message.content} />
+          <Text 
+            className={`text-base ${
+              isAI 
+                ? 'text-[hsl(var(--text-primary))]' 
+                : 'text-[hsl(var(--text-primary))]'
+            }`}
+          >
+            {message.content}
+          </Text>
         )}
       </View>
     </View>
@@ -50,8 +52,14 @@ export function MessageList({ messages, contentContainerStyle }: MessageListProp
 
   return (
     <ScrollView 
-      className="flex-1 space-y-4"
-      contentContainerStyle={[{ paddingBottom: 20 }, contentContainerStyle]}
+      className="flex-1 px-6 bg-[#f8f2f8] dark:bg-[#221d27]"
+      contentContainerStyle={[
+        { 
+          paddingVertical: 20,
+          paddingBottom: 180 // Add extra padding at bottom to account for input height
+        }, 
+        contentContainerStyle
+      ]}
       showsVerticalScrollIndicator={false}
     >
       {messages.map((message) => (
