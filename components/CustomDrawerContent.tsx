@@ -12,6 +12,7 @@ import { useQuery } from 'convex/react';
 import { api } from '~/convex/_generated/api';
 import { formatDistanceToNow } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
+import { SignOutButton } from './SignOutButton';
 
 function ChatItem({ title, onPress, id }: { title: string; onPress: () => void; id: string }) {
   return (
@@ -35,7 +36,7 @@ function ChatSection({ title, chats, icon }: { title: string; chats: any[]; icon
         {icon && (
           <Ionicons name={icon as any} size={16} style={{ color: '#f5dbef' }} className="dark:text-[#2b2431]" />
         )}
-        <Text className="text-sm font-medium text-[#560f2b] dark:text-[#c46095]">
+        <Text className="text-sm font-semibold text-[#560f2b] dark:text-[#c46095]">
           {title}
         </Text>
       </View>
@@ -97,7 +98,7 @@ export function CustomDrawerContent(props: any) {
         <View className="flex-row items-center justify-between mb-4">
           <View className="flex-row items-center gap-2">
             <Ionicons name="menu" size={20} style={{ color: 'hsl(var(--text-muted))' }} />
-            <Text className="font-medium text-lg text-[hsl(var(--text-primary))]">T3.chat</Text>
+            <Text className="text-lg font-semibold text-[hsl(var(--text-primary))]">T3.chat</Text>
           </View>
           <View className="flex-row items-center gap-2">
             <Ionicons name="cash-outline" size={16} style={{ color: 'hsl(var(--text-muted))' }} />
@@ -108,7 +109,7 @@ export function CustomDrawerContent(props: any) {
           onPress={() => router.push('/')}
           className="w-full rounded-lg py-2.5 font-medium bg-[hsl(var(--primary-accent))]"
         >
-          <Text className="font-medium text-white">New Chat</Text>
+          <Text className="font-semibold text-white">New Chat</Text>
         </Button>
       </View>
 
@@ -142,17 +143,20 @@ export function CustomDrawerContent(props: any) {
             <AvatarFallback 
               className="text-sm font-medium bg-[hsl(var(--primary-accent))]"
             >
-              <Text className="text-white">
+              <Text className="font-semibold text-white">
                 {user?.firstName?.[0]?.toUpperCase() || 'U'}
               </Text>
             </AvatarFallback>
           </Avatar>
           <View className="flex-1">
-            <Text className="text-sm font-medium text-[hsl(var(--text-primary))]">
+            <Text className="text-sm font-semibold text-[hsl(var(--text-primary))]">
               {user?.firstName} {user?.lastName}
             </Text>
-            <Text className="text-xs text-[hsl(var(--text-muted))]">Pro</Text>
+            <Text className="text-xs font-medium text-[hsl(var(--text-muted))]">Pro</Text>
           </View>
+        </View>
+        <View className="mt-4">
+          <SignOutButton />
         </View>
       </View>
     </View>

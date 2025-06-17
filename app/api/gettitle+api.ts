@@ -9,7 +9,7 @@ export async function POST(req: Request) {
         console.log('Generating title for message:', message);
         
         const { text } = await generateText({
-            model: google('gemini-2.5-flash'),  // Let's use a specific model for now
+            model: google('gemini-1.5-flash'),  // Let's use a specific model for now
             prompt: prompt
         });
 

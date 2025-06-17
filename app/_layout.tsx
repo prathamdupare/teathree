@@ -15,6 +15,7 @@ import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { tokenCache } from '@clerk/clerk-expo/token-cache'
 import { CustomDrawerContent } from '~/components/CustomDrawerContent';
 import { PortalHost } from '@rn-primitives/portal';
+import { useAppFonts } from '~/lib/fonts';
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -74,6 +75,7 @@ export default function RootLayout() {
   const hasMounted = React.useRef(false);
   const { colorScheme, isDarkColorScheme } = useColorScheme();
   const [isColorSchemeLoaded, setIsColorSchemeLoaded] = React.useState(false);
+  const { fontsLoaded, fontError } = useAppFonts();
 
   useIsomorphicLayoutEffect(() => {
     if (hasMounted.current) {
@@ -81,14 +83,13 @@ export default function RootLayout() {
     }
 
     if (Platform.OS === 'web') {
-      // Adds the background color to the html element to prevent white background on overscroll.
       document.documentElement.classList.add('bg-background');
     }
     setIsColorSchemeLoaded(true);
     hasMounted.current = true;
   }, []);
 
-  if (!isColorSchemeLoaded) {
+  if (!isColorSchemeLoaded || !fontsLoaded) {
     return null;
   }
 
@@ -112,6 +113,9 @@ export default function RootLayout() {
                   swipeEnabled: Platform.OS !== 'web',
                   drawerActiveTintColor: isDarkColorScheme ? NAV_THEME.dark.primary : NAV_THEME.light.primary,
                   drawerInactiveTintColor: isDarkColorScheme ? NAV_THEME.dark.text : NAV_THEME.light.text,
+                  drawerLabelStyle: {
+                    fontFamily: 'JetBrainsMono',
+                  }
                 }}
                 initialRouteName="index"
               >

@@ -12,26 +12,25 @@ import type { PropsWithChildren } from 'react';
 import { CustomMarkdown } from '../CustomMarkdown';
 import { ChatInput } from './ChatInput';
 import { AI_PROVIDERS } from "~/lib/ai-providers";
-import { generateChatTitle } from '~/convex/chats';
 
 interface ChatContainerProps {
   chatId: Id<"chats"> | null;
   onChatCreated?: (newChatId: Id<"chats">) => void;
+  defaultInputValue?: string;
 }
 
 export function ChatContainer({ 
   chatId, 
   onChatCreated,
+  defaultInputValue = '',
   children 
 }: PropsWithChildren<ChatContainerProps>) {
   const { user } = useUser();
-  // Track messages in local state to maintain continuity
   const [localMessages, setLocalMessages] = useState<any[]>([]);
   const [currentAiMessageId, setCurrentAiMessageId] = useState<Id<"messages"> | null>(null);
   const lastUpdateRef = useRef<string>('');
   const createStreamingMessage = useMutation(api.messages.createStreamingMessage);
   const updateMessageContent = useMutation(api.messages.updateMessageContent);
-  const generateChatTitle = useMutation(api.chats.generateChatTitle);
   const createChat = useMutation(api.chats.createChat);
   const convexMessages = useQuery(api.messages.getChatMessages, 
     chatId ? { chatId } : 'skip'
@@ -40,7 +39,6 @@ export function ChatContainer({
     chatId ? { chatId } : 'skip'
   );
 
-  // Initialize provider/model from chat or defaults
   const [selectedProvider, setSelectedProvider] = useState(
     chat?.currentProvider || 'google'
   );
@@ -130,11 +128,9 @@ export function ChatContainer({
       isComplete: false
     };
 
-    // Update local messages immediately
     setLocalMessages(prev => [...prev, optimisticUserMessage, optimisticAiMessage]);
 
     try {
-      // Create new chat if needed
       let targetChatId = chatId;
       if (!targetChatId) {
         targetChatId = await createChat({
@@ -145,7 +141,6 @@ export function ChatContainer({
         });
 
         try {
-          // Generate title using the new API
           const titleResponse = await fetch(generateAPIUrl('/api/gettitle'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -182,7 +177,6 @@ export function ChatContainer({
         onChatCreated?.(targetChatId);
       }
 
-      // Save user message to Convex
       await createStreamingMessage({
         chatId: targetChatId,
         role: 'user',
@@ -192,7 +186,6 @@ export function ChatContainer({
         updatedAt: timestamp,
       });
 
-      // Create placeholder AI message in Convex
       const aiMessageId = await createStreamingMessage({
         chatId: targetChatId,
         role: 'assistant',
@@ -206,23 +199,19 @@ export function ChatContainer({
 
       setCurrentAiMessageId(aiMessageId);
 
-      // Start streaming
       await handleStreamingSubmit({} as any);
     } catch (error) {
       console.error('Error:', error);
-      // Revert local messages on error
       setLocalMessages(convexMessages || []);
     }
   };
 
-  // Effect to update Convex when streaming is complete
   useEffect(() => {
     const updateStreamingMessage = async () => {
       if (!currentAiMessageId || !streamingMessages.length) return;
 
       const lastMessage = streamingMessages[streamingMessages.length - 1];
       if (lastMessage?.role === 'assistant' && lastMessage.content) {
-        // Update local state immediately
         setLocalMessages(prev => 
           prev.map(msg => 
             msg._id === currentAiMessageId 
@@ -231,7 +220,6 @@ export function ChatContainer({
           )
         );
 
-        // Update Convex with chunks during streaming
         if (lastMessage.content !== lastUpdateRef.current) {
           await updateMessageContent({
             messageId: currentAiMessageId,
@@ -241,7 +229,6 @@ export function ChatContainer({
           lastUpdateRef.current = lastMessage.content;
         }
         
-        // Clean up when streaming is complete
         if (!isStreamingLoading) {
           setCurrentAiMessageId(null);
           lastUpdateRef.current = '';
@@ -260,7 +247,7 @@ export function ChatContainer({
           <MessageList messages={localMessages} />
         </View>
         <ChatInput
-          input={streamingInput}
+          input={defaultInputValue || streamingInput}
           onInputChange={(text) =>
             handleInputChange({
               target: { value: text },

@@ -50,12 +50,12 @@ export function ModelSelector({
   };
 
   return (
-    <View className="py-2">
+    <View className="">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button 
             variant="outline" 
-            className="bg-[#f5dbef] dark:bg-[#2b2431] border-[#b02372] dark:border-[#d7c2ce] hover:bg-[#f3e4f5] dark:hover:bg-[#2a242f] flex-row items-center gap-2 px-3"
+            className="bg- dark:bg-[#2b2431] border-none hover:bg-[#f3e4f5] dark:hover:bg-[#2a242f] flex-row items-center gap-2 px-3"
           >
             <Ionicons 
               name={getProviderIcon(selectedProvider)} 

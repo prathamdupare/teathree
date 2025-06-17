@@ -39,7 +39,7 @@ const MessageItem = memo(({ message }: { message: Message }) => {
                 : 'text-[hsl(var(--text-primary))]'
             }`}
           >
-            {message.content}
+            <CustomMarkdown content={message.content} />
           </Text>
         )}
       </View>
@@ -56,7 +56,7 @@ export function MessageList({ messages, contentContainerStyle }: MessageListProp
       contentContainerStyle={[
         { 
           paddingVertical: 20,
-          paddingBottom: 180 // Add extra padding at bottom to account for input height
+          paddingBottom: 180 
         }, 
         contentContainerStyle
       ]}
