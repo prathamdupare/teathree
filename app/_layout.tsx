@@ -114,7 +114,7 @@ export default function RootLayout() {
                   drawerActiveTintColor: isDarkColorScheme ? NAV_THEME.dark.primary : NAV_THEME.light.primary,
                   drawerInactiveTintColor: isDarkColorScheme ? NAV_THEME.dark.text : NAV_THEME.light.text,
                   drawerLabelStyle: {
-                    fontFamily: 'JetBrainsMono',
+                    fontFamily: 'Ubuntu',
                   }
                 }}
                 initialRouteName="index"

@@ -1,5 +1,3 @@
-"use client"
-
 import { View, TextInput, Text, Pressable } from "react-native"
 import { memo, useEffect } from "react"
 import { Button } from "~/components/ui/button"
@@ -16,90 +14,99 @@ interface ChatInputProps {
   isLoading?: boolean
 }
 
-export const ChatInput = memo(
-  ({
-    input,
-    onInputChange,
-    onSubmit,
-    selectedProvider,
-    selectedModel,
-    onModelSelect,
-    isLoading = false,
-  }: ChatInputProps) => {
-    const canSubmit = input.trim().length > 0 && !isLoading
+const ChatInputComponent = ({
+  input,
+  onInputChange,
+  onSubmit,
+  selectedProvider,
+  selectedModel,
+  onModelSelect,
+  isLoading = false,
+}: ChatInputProps) => {
+  const canSubmit = input.trim().length > 0 && !isLoading
 
-    useEffect(() => {
-      if (input) {
-        onInputChange(input)
-      }
-    }, [input])
-
-    const handleSubmit = (e?: any) => {
-      if (e?.nativeEvent?.key === "Enter" && !e.nativeEvent.shiftKey) {
-        e.preventDefault?.()
-        if (canSubmit) {
-          onSubmit()
-        }
-        return
-      }
+  useEffect(() => {
+    if (input) {
+      onInputChange(input)
     }
+  }, [input])
 
-    return (
-      <View className="absolute bottom-0 left-0 right-0">
-        {/* Outer container with rounded top corners and border */}
-        <View className="bg-[#fcf3fc] dark:bg-[#2a242f] border border-[#fadcfd] dark:border-[#2a242f] rounded-t-2xl mx-4 shadow-sm">
-          {/* Inner container with subtle border */}
-          <View className="border border-[hsl(var(--input-border))] rounded-t-2xl m-1 bg-[#fcf3fc] dark:bg-[#2a242f]">
-            <View className="py-1">
-              <View className="relative">
-                <TextInput
-                  className="w-full text-base px-3 py-2 bg-transparent text-[hsl(var(--text-primary))]"
-                  placeholder="Type your message here..."
-                  value={input}
-                  onChangeText={onInputChange}
-                  onKeyPress={handleSubmit}
-                  multiline={true}
-                  blurOnSubmit={false}
-                  returnKeyType="send"
-                  enablesReturnKeyAutomatically={true}
-                  style={{
-                    textAlignVertical: "center",
-                    minHeight: 36,
-                    maxHeight: 100,
-                    outline: "none",
-                  }}
-                  placeholderTextColor="#6b6b6b"
-                  autoCorrect={false}
-                  spellCheck={false}
-                  editable={!isLoading}
-                />
-              </View>
-              <View className="flex-row items-center gap-2">
-                <ModelSelector
-                  selectedProvider={selectedProvider}
-                  selectedModel={selectedModel}
-                  onModelSelect={onModelSelect}
-                />
-                <Button
-                  variant="ghost"
-                  className="flex-row items-center gap-1 px-2 py-1 rounded-lg bg-transparent"
-                  onPress={() => {}}
-                >
-                  <Ionicons name="attach" size={12} color="#6b6b6b" />
-                  <Text className="text-xs text-[hsl(var(--secondary-accent))]">Attach</Text>
-                </Button> 
-                <Pressable
-                    className="absolute right-1 top-1/2 transform -translate-y-1/2 rounded-lg w-10 h-10 items-center justify-center bg-[#cd98b2] dark:bg-[#3a2033]"
-                    onPress={() => handleSubmit()}
-                    disabled={!canSubmit}
-                  >
-                    <Ionicons name="arrow-up" size={14} color="white" />
-                </Pressable>
-              </View>
+  const handleSubmit = (e?: any) => {
+    if (e?.nativeEvent?.key === "Enter" && !e.nativeEvent.shiftKey) {
+      e.preventDefault?.()
+      if (canSubmit) {
+        onSubmit()
+      }
+      return
+    }
+    // If called from button, just submit
+    if (canSubmit && !e?.nativeEvent) {
+      onSubmit()
+    }
+  }
+
+  return (
+    <View className="absolute bottom-0 left-0 right-0 m-0">
+      {/* Outer container with rounded top corners and border */}
+      <View className="  border border-[#fadcfd] dark:border-[#3a242f] rounded-t-2xl mx-4 shadow-sm">
+        {/* Inner container with subtle border */}
+        <View className="border border-[hsl(var(--input-border))] rounded-t-2xl m-1 bg-[#fcf3fc] dark:bg-[#2a242f]">
+          <View className="py-1">
+            <View className="relative">
+              <TextInput
+                className="w-full text-base px-3 py-2 bg-transparent text-[hsl(var(--text-primary))]"
+                placeholder="Type your message here..."
+                value={input}
+                onChangeText={onInputChange}
+                onKeyPress={handleSubmit}
+                multiline={true}
+                blurOnSubmit={false}
+                returnKeyType="send"
+                enablesReturnKeyAutomatically={true}
+                style={{
+                  textAlignVertical: "center",
+                  minHeight: 36,
+                  maxHeight: 100,
+                  outline: "none",
+                }}
+                placeholderTextColor="#6b6b6b"
+                autoCorrect={false}
+                spellCheck={false}
+                editable={!isLoading}
+              />
+            </View>
+            <View className="flex-row items-center gap-2">
+              <ModelSelector
+                selectedProvider={selectedProvider}
+                selectedModel={selectedModel}
+                onModelSelect={onModelSelect}
+              />
+              <Button
+                variant="ghost"
+                className="flex-row items-center gap-1 px-2 py-1 rounded-lg bg-transparent"
+                onPress={() => {}}
+              >
+                <Ionicons name="attach" size={12} color="#6b6b6b" />
+                <Text className="text-xs text-[#6b6b6b]">
+                  Attach
+                </Text>
+              </Button>
+              <Pressable
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 rounded-lg w-10 h-10 items-center justify-center bg-[#cd98b2] dark:bg-[#3a2033]"
+                onPress={() => handleSubmit()}
+                disabled={!canSubmit}
+              >
+                <Ionicons name="arrow-up" size={14} color="white" />
+              </Pressable>
             </View>
           </View>
         </View>
       </View>
-    )
-  },
-)
+    </View>
+  )
+}
+
+const ChatInput = memo(ChatInputComponent)
+ChatInput.displayName = "ChatInput"
+
+export { ChatInput }

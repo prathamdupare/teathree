@@ -29,22 +29,22 @@ import type { MarkdownProps, RenderRules } from "react-native-markdown-display";
 
 const styles = StyleSheet.create({
   baseFont: {
-    fontFamily: 'PlusJakartaSans',
+    fontFamily: 'Ubuntu',
   },
   mediumFont: {
-    fontFamily: 'PlusJakartaSans-Medium',
+    fontFamily: 'Ubuntu-Medium',
   },
   semiBoldFont: {
-    fontFamily: 'PlusJakartaSans-SemiBold',
+    fontFamily: 'Ubuntu-Bold',
   },
   boldFont: {
-    fontFamily: 'PlusJakartaSans-Bold',
+    fontFamily: 'Ubuntu-Bold',
   },
   italicFont: {
-    fontFamily: 'PlusJakartaSans-Italic',
+    fontFamily: 'Ubuntu-Italic',
   },
   codeFont: {
-    fontFamily: 'FiraMono',
+    fontFamily: 'Ubuntu-Medium',
   }
 });
 

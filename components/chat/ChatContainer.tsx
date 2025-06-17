@@ -1,6 +1,6 @@
-import { View, SafeAreaView, Text } from 'react-native';
+import { View} from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/convex/_generated/api';
 import { Id } from '~/convex/_generated/dataModel';
@@ -9,7 +9,6 @@ import { fetch as expoFetch } from 'expo/fetch';
 import { MessageList } from './MessageList';
 import { generateAPIUrl } from '~/app/utils/utils';
 import type { PropsWithChildren } from 'react';
-import { CustomMarkdown } from '../CustomMarkdown';
 import { ChatInput } from './ChatInput';
 import { AI_PROVIDERS } from "~/lib/ai-providers";
 
