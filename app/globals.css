@@ -1,71 +1,89 @@
 @tailwind base;
-  @tailwind components;
-  @tailwind utilities;
+@tailwind components;
+@tailwind utilities;
 
-  @layer base {
-      :root {
-      /* T3 Light Theme Colors */
-      --background: 318 58% 96%; /* #f5edfa */
-      --foreground: 264 47% 39%; /* #673c8b */
-      --card: 318 58% 96%; /* #f5edfa */
-      --card-foreground: 264 47% 39%; /* #673c8b */
-      --popover: 318 58% 96%; /* #f5edfa */
-      --popover-foreground: 264 47% 39%; /* #673c8b */
-      --primary: 264 47% 39%; /* #673c8b */
-      --primary-foreground: 318 58% 96%; /* #f5edfa */
-      --secondary: 318 42% 94%; /* #f2def5 */
-      --secondary-foreground: 264 47% 39%; /* #673c8b */
-      --muted: 318 42% 94%; /* #f2def5 */
-      --muted-foreground: 270 11% 64%; /* #a289a9 */
-      --accent: 318 42% 94%; /* #f2def5 */
-      --accent-foreground: 264 47% 39%; /* #673c8b */
-      --destructive: 356 70% 61%; /* #d2626c */
-      --destructive-foreground: 318 58% 96%; /* #f5edfa */
-      --border: 318 42% 94%; /* #f2def5 */
-      --input: 318 42% 94%; /* #f2def5 */
-      --ring: 264 47% 39%; /* #673c8b */
-      
-      /* T3 Light specific colors */
-      --chat-input: 318 42% 94%; /* #f2def5 */
-      --chat-bubble-user: 333 86% 44%; /* #c51478 */
-      --chat-bubble-ai: 318 42% 94%; /* #f2def5 */
-      --sidebar: 318 58% 96%; /* #f5edfa */
-      }
-
-      .dark:root {
-      /* T3 Dark Theme Colors */
-      --background: 267 19% 11%; /* #1d1921 */
-      --foreground: 270 25% 87%; /* #d2c7e1 */
-      --card: 267 19% 11%; /* #1d1921 */
-      --card-foreground: 270 25% 87%; /* #d2c7e1 */
-      --popover: 270 19% 10%; /* #1a1419 */
-      --popover-foreground: 270 25% 87%; /* #d2c7e1 */
-      --primary: 270 25% 87%; /* #d2c7e1 */
-      --primary-foreground: 267 19% 11%; /* #1d1921 */
-      --secondary: 267 19% 16%; /* #2a2430 */
-      --secondary-foreground: 270 25% 87%; /* #d2c7e1 */
-      --muted: 267 19% 16%; /* #2a2430 */
-      --muted-foreground: 273 14% 49%; /* #7a6483 */
-      --accent: 267 19% 16%; /* #2a2430 */
-      --accent-foreground: 270 25% 87%; /* #d2c7e1 */
-      --destructive: 356 70% 61%; /* #d2626c */
-      --destructive-foreground: 270 25% 87%; /* #d2c7e1 */
-      --border: 267 19% 16%; /* #2a2430 */
-      --input: 267 19% 16%; /* #2a2430 */
-      --ring: 272 69% 72%; /* #baa4ed */
-      
-      /* T3 Dark specific colors */
-      --chat-input: 267 19% 16%; /* #2a2430 */
-      --chat-bubble-user: 338 89% 71%; /* #f888b5 */
-      --chat-bubble-ai: 267 19% 16%; /* #2a2430 */
-      --sidebar: 267 19% 11%; /* #1d1921 */
-      
-      /* Additional T3 Dark accent colors for future use */
-      --t3-blue: 201 100% 81%; /* #a2dbff */
-      --t3-green: 157 44% 72%; /* #96d0bb */
-      --t3-orange: 25 100% 79%; /* #ffbc9e */
-      --t3-purple: 262 61% 75%; /* #baa4ed */
-      --t3-pink: 295 71% 77%; /* #e8a5e4 */
-      --t3-cream: 270 14% 95%; /* #f2ebfa */
-      }
+@layer base {
+  :root {
+    /* Base shadcn variables */
+    --background: 308 19% 96%; /* #f9f3f9 - main bg */
+    --foreground: 301 27% 15%; /* #2d1b2e - text primary */
+    --card: 308 19% 96%;
+    --card-foreground: 301 27% 15%;
+    --popover: 308 19% 96%;
+    --popover-foreground: 301 27% 15%;
+    --primary: 331 53% 44%; /* #a33d69 - primary accent */
+    --primary-foreground: 0 0% 100%; /* #ffffff - white text on primary */
+    --secondary: 337 75% 44%; /* #cc1180 - secondary accent */
+    --secondary-foreground: 0 0% 100%; /* #ffffff - white text on secondary */
+    --muted: 301 15% 82%;
+    --muted-foreground: 301 13% 49%; /* #8a6b8c - text muted */
+    --accent: 337 75% 44%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 301 12% 86%; /* #e5d3e0 - border color */
+    --input: 301 12% 86%;
+    --ring: 331 53% 44%;
+    --radius: 0.5rem;
+    
+    /* Custom T3 variables for color palette */
+    --sidebar-bg: 296 48% 91%; /* #f0dff2 - sidebar bg */
+    --main-bg: 308 19% 96%; /* #f9f3f9 - main bg */
+    --primary-accent: 331 53% 44%; /* #a33d69 - primary accent */
+    --secondary-accent: 337 75% 44%; /* #cc1180 - secondary accent */
+    --input-bg: 0 0% 100%; /* #ffffff - input bg */
+    --input-border: 301 12% 86%; /* #e5d3e0 - input border */
+    --text-primary: 301 27% 15%; /* #2d1b2e - text primary */
+    --text-secondary: 300 18% 36%; /* #6b4c6d - text secondary */
+    --text-muted: 301 13% 49%; /* #8a6b8c - text muted */
+    --border-color: 301 12% 86%; /* #e5d3e0 - border color */
+    --hover-bg: 331 53% 4% / 0.1; /* rgba(163, 61, 105, 0.1) - hover bg */
+    --button-hover: 331 40% 38%; /* #8a3456 - button hover */
   }
+
+  .dark {
+    /* Base shadcn variables - dark mode */
+    --background: 295 19% 14%; /* #211c26 - dark main bg */
+    --foreground: 0 0% 100%; /* #ffffff - dark text primary */
+    --card: 295 19% 14%;
+    --card-foreground: 0 0% 100%;
+    --popover: 295 19% 14%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 330 51% 15%; /* #3b1226 - dark primary accent */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 330 51% 15%; /* #40142a - dark secondary accent */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 293 10% 30%;
+    --muted-foreground: 0 0% 42%; /* #6b6b6b - dark text muted */
+    --accent: 330 51% 15%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 286 9% 23%; /* #3a3540 - dark border */
+    --input: 286 9% 23%;
+    --ring: 330 51% 15%;
+    
+    /* Custom T3 variables for dark mode color palette */
+    --sidebar-bg: 291 19% 9%; /* #181117 - dark sidebar bg */
+    --main-bg: 295 19% 14%; /* #211c26 - dark main bg */
+    --primary-accent: 330 51% 15%; /* #3b1226 - dark primary accent */
+    --secondary-accent: 327 50% 17%; /* #40142a - dark secondary accent */
+    --input-bg: 290 10% 17%; /* #2a2530 - dark input bg */
+    --input-border: 286 9% 23%; /* #3a3540 - dark input border */
+    --text-primary: 0 0% 100%; /* #ffffff - dark text primary */
+    --text-secondary: 300 10% 66%; /* #b0a0b0 - dark text secondary */
+    --text-muted: 0 0% 42%; /* #6b6b6b - dark text muted */
+    --border-color: 286 9% 23%; /* #3a3540 - dark border */
+    --hover-bg: 327 50% 17% / 0.3; /* rgba(64, 20, 42, 0.3) - dark hover bg */
+    --button-hover: 328 50% 20%; /* #4a1830 - dark button hover */
+  }
+  
+  * {
+    @apply border-border;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}

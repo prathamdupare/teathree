@@ -8,6 +8,7 @@ export default defineSchema({
         createdAt: v.number(),
         updatedAt: v.number(),
         currentProvider: v.string(),
+        currentModel: v.string(),
         isArchived: v.boolean(),
         isPinned: v.boolean(),
     })

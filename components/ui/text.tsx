@@ -8,6 +8,7 @@ const TextClassContext = React.createContext<string | undefined>(undefined);
 function Text({
   className,
   asChild = false,
+  style,
   ...props
 }: React.ComponentProps<typeof RNText> & {
   ref?: React.RefObject<RNText>;
@@ -17,7 +18,8 @@ function Text({
   const Component = asChild ? Slot.Text : RNText;
   return (
     <Component
-      className={cn('text-base text-foreground web:select-text', textClass, className)}
+      className={cn('text-base text-foreground leading-normal tracking-tight', textClass, className)}
+      style={[{ fontFamily: 'PlusJakartaSans' }, style]}
       {...props}
     />
   );

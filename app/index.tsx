@@ -1,208 +1,123 @@
-import { generateAPIUrl } from './utils/utils';
-import { View, Text, SafeAreaView } from 'react-native';
+import { View, Text, SafeAreaView, Pressable } from 'react-native';
 import { SignedIn, SignedOut, useUser } from '@clerk/clerk-expo';
 import { Link, useRouter } from 'expo-router';
-import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
-import { api } from '~/convex/_generated/api';
+import { ChatHeader } from '~/components/chat';
+import { ChatContainer } from '~/components/chat/ChatContainer';
 import { Id } from '~/convex/_generated/dataModel';
-import { ChatHeader, ChatInput, MessageList } from '~/components/chat';
+import { Ionicons } from '@expo/vector-icons';
 
-const SUGGESTED_PROMPTS = [
-  "How does AI work?",
-  "Are black holes real?", 
-  "How many Rs are in the word \"strawberry\"?",
-  "What is the meaning of life?"
-];
-
-const ACTION_BADGES = [
-  { label: "Create", icon: "✨" },
-  { label: "Explore", icon: "🔍" },
+const TABS = [
+  { id: 'create', label: "Create", icon: "sparkles-outline", prompts: [
+    "Write a short story about a robot discovering emotions",
+    "Help me outline a sci-fi novel set in a post-apocalyptic world",
+    "Create a character profile for a complex villain with sympathetic motives",
+    "Give me 5 creative writing prompts for flash fiction",
+  ]},
+  { id: 'explore', label: "Explore", icon: "compass-outline", prompts: [
+    "Good books for fans of Rick Rubin",
+    "Countries ranked by number of corgis",
+    "Most successful companies in the world",
+    "How much does Claude cost?",
+  ]},
+  { id: 'code', label: "Code", icon: "code-slash-outline", prompts: [
+    "Write code to invert a binary search tree in Python",
+    "What's the difference between Promise.all and Promise.allSettled?",
+    "Explain React's useEffect cleanup function",
+    "Best practices for error handling in async/await",
+  ]},
+  { id: 'learn', label: "Learn", icon: "school-outline", prompts: [
+    "How does AI work?",
+    "Are black holes real?",
+    'How many Rs are in the word "strawberry"?',
+    "What is the meaning of life?",
+  ]},
 ];
 
 export default function App() {
   const { user } = useUser();
   const router = useRouter();
-  const [input, setInput] = useState("");
-  const [selectedModel, setSelectedModel] = useState("Gemini 1.5 Flash");
   const [chatId, setChatId] = useState<Id<"chats"> | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const createChat = useMutation(api.chats.createChat);
-  const createStreamingMessage = useMutation(api.messages.createStreamingMessage);
-  const updateMessageContent = useMutation(api.messages.updateMessageContent);
-  const messages = useQuery(api.messages.getChatMessages, 
-    chatId ? { chatId } : 'skip'
-  );
-
-  const handleSubmit = async () => {
-    if (!input.trim() || !user?.id || isLoading) return;
-
-    const currentInput = input;
-    setInput(''); // Clear input immediately
-    setIsLoading(true);
-
-    try {
-      // Create new chat if needed
-      let targetChatId = chatId;
-      if (!targetChatId) {
-        targetChatId = await createChat({
-          title: currentInput.slice(0, 50) + (currentInput.length > 50 ? '...' : ''),
-          userId: user.id,
-          provider: 'google',
-        });
-        
-        // Update state and URL
-        setChatId(targetChatId);
-        window.history.pushState({}, '', `/chat/${targetChatId}`);
-      }
-
-      // Save user message
-      await createStreamingMessage({
-        chatId: targetChatId,
-        role: 'user',
-        content: currentInput,
-        isComplete: true,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-
-      // Create initial AI message
-      const aiMessageId = await createStreamingMessage({
-        chatId: targetChatId,
-        role: 'assistant',
-        content: '',
-        provider: 'google',
-        model: 'gemini-1.5-flash',
-        isComplete: false,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-
-      // Make API call
-      const response = await fetch(generateAPIUrl('/api/chat'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            ...(messages?.map(m => ({ role: m.role, content: m.content })) || []),
-            { role: 'user', content: currentInput }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('API call failed');
-      }
-
-      // Handle streaming response
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let content = '';
-
-      if (reader) {
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value);
-            content += chunk;
-
-            // Update message content as we receive it
-            await updateMessageContent({
-              messageId: aiMessageId,
-              content: content,
-            });
-          }
-        } finally {
-          reader.releaseLock();
-        }
-
-        // Mark the message as complete
-        await updateMessageContent({
-          messageId: aiMessageId,
-          content: content || 'I apologize, but I was unable to generate a response.',
-          isComplete: true,
-        });
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      setInput(currentInput); // Restore input on error
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [activeTab, setActiveTab] = useState('create');
+  const [inputValue, setInputValue] = useState('');
 
   // Show empty state UI
   const EmptyState = () => (
-    <View className="flex-1 items-center justify-center p-8">
-      <View className="max-w-2xl w-full">
-        <Text className="text-3xl font-bold text-center mb-8 text-foreground">
+    <View className="flex-1 items-center justify-center p-8 bg-[#f8f2f8] dark:bg-[#221d27]">
+      <View className="max-w-2xl w-full mx-auto">
+        <Text className="text-3xl font-medium text-[#3a1326] dark:text-white mb-12 text-center">
           How can I help you, {user?.firstName || 'there'}?
         </Text>
         
-        {/* Action Badges */}
-        <View className="flex-row justify-center items-center mb-8 gap-3 flex-wrap">
-          {ACTION_BADGES.map((action, index) => (
-            <Badge key={index} variant="secondary" className="px-4 py-2">
-              <Text className="text-secondary-foreground">
-                {action.icon} {action.label}
+        {/* Action Buttons */}
+        <View className="flex-row items-center justify-center gap-4 mb-12 w-full">
+          {TABS.map((tab) => (
+            <Pressable
+              key={tab.id}
+              onPress={() => setActiveTab(tab.id)}
+              className={`flex-row items-center px-4 py-2 rounded-full ${
+                activeTab === tab.id 
+                ? 'bg-[#3a1326]' 
+                : 'bg-transparent border border-[#b02372] dark:border-[#6b6b6b]'
+              }`}
+            >
+              <Ionicons 
+                name={tab.icon as any} 
+                size={16} 
+                color={activeTab === tab.id ? '#fff' : '#b02372'} 
+                style={{ marginRight: 8 }} 
+                className="dark:text-[#9ca3af]"
+              />
+              <Text className={
+                activeTab === tab.id 
+                ? 'text-white font-medium' 
+                : 'text-[#b02372] dark:text-[#9ca3af]'
+              }>
+                {tab.label}
               </Text>
-            </Badge>
+            </Pressable>
           ))}
         </View>
 
-        {/* Suggested Prompts */}
-        <View className="space-y-3">
-          {SUGGESTED_PROMPTS.map((prompt, index) => (
-            <Button
+        {/* Example Prompts */}
+        <View className="space-y-4">
+          {TABS.find(t => t.id === activeTab)?.prompts.map((prompt, index) => (
+            <Pressable
               key={index}
-              variant="ghost"
-              className="w-full justify-start p-4 h-auto bg-secondary/30 border border-border rounded-xl"
               onPress={() => {
-                setInput(prompt);
+                setInputValue(prompt);
               }}
+              className="w-full"
             >
-              <Text className="text-foreground text-left">{prompt}</Text>
-            </Button>
+              <Text className="text-[#b02372] dark:text-[#9ca3af] text-left text-base hover:text-[#560f2b] dark:hover:text-[#d1d5db] transition-colors">
+                {prompt}
+              </Text>
+            </Pressable>
           ))}
         </View>
       </View>
     </View>
   );
 
-  const chatTitle = chatId 
-    ? (messages?.[0]?.content.slice(0, 50) || 'Chat') 
-    : 'T3.chat';
-
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-[#221d27] dark:bg-[#221d27]">
       <SignedIn>
-        <ChatHeader title={chatTitle} />
-
-        <View className="flex-1">
-          {!chatId ? (
-            <EmptyState />
-          ) : (
-            <MessageList messages={messages} />
-          )}
-        </View>
-
-        <ChatInput
-          input={input}
-          onInputChange={setInput}
-          onSubmit={handleSubmit}
-          selectedModel={selectedModel}
-          isLoading={isLoading}
-        />
+        <ChatContainer 
+          chatId={chatId} 
+          onChatCreated={(newChatId) => {
+            setChatId(newChatId);
+            router.push(`/chat/${newChatId}`);
+          }}
+          defaultInputValue={inputValue}
+        >
+          {!chatId && <EmptyState />}
+        </ChatContainer>
       </SignedIn>
 
       <SignedOut>
         <View className="flex-1 items-center justify-center p-6">
-          <Text className="text-3xl font-bold text-center mb-4 text-foreground">
+          <Text className="text-3xl font-semibold text-center mb-4 text-foreground">
             Welcome to T3.chat
           </Text>
           <Text className="text-lg text-muted-foreground text-center mb-8">

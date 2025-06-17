@@ -6,33 +6,40 @@ import { router } from 'expo-router';
 import { Text } from '~/components/ui/text';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
-import { Avatar } from '~/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '~/components/ui/avatar';
 import { ThemeToggle } from '~/components/ui/theme-toggle';
 import { useQuery } from 'convex/react';
 import { api } from '~/convex/_generated/api';
 import { formatDistanceToNow } from 'date-fns';
+import { Ionicons } from '@expo/vector-icons';
+import { SignOutButton } from './SignOutButton';
 
 function ChatItem({ title, onPress, id }: { title: string; onPress: () => void; id: string }) {
   return (
     <Pressable
       onPress={onPress}
-      className="px-3 py-2 rounded-lg hover:bg-accent active:bg-accent"
+      className="text-sm p-2 rounded-md cursor-pointer hover:bg-[#f5dbef] dark:hover:bg-[#2b2431] transition-colors"
     >
-      <Text className="text-sm text-foreground truncate">
+      <Text className="text-sm truncate dark:text-[#d7c2ce] text-[#b02372] hover:text-[#560f2b] transition-colors">
         {title}
       </Text>
     </Pressable>
   );
 }
 
-function ChatSection({ title, chats }: { title: string; chats: any[] }) {
+function ChatSection({ title, chats, icon }: { title: string; chats: any[]; icon?: string }) {
   if (!chats?.length) return null;
   
   return (
     <View className="mb-6">
-      <Text className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-3">
-        {title}
-      </Text>
+      <View className="flex-row items-center gap-2 mb-3">
+        {icon && (
+          <Ionicons name={icon as any} size={16} style={{ color: '#f5dbef' }} className="dark:text-[#2b2431]" />
+        )}
+        <Text className="text-sm font-semibold text-[#560f2b] dark:text-[#c46095]">
+          {title}
+        </Text>
+      </View>
       <View className="space-y-1">
         {chats.map((chat) => (
           <ChatItem
@@ -58,13 +65,18 @@ export function CustomDrawerContent(props: any) {
 
   // Organize chats by date
   const organizedChats = React.useMemo(() => {
-    if (!chats) return { today: [], yesterday: [], older: [] };
+    if (!chats) return { pinned: [], today: [], yesterday: [], older: [] };
 
     const now = Date.now();
     const todayStart = new Date().setHours(0, 0, 0, 0);
     const yesterdayStart = todayStart - 24 * 60 * 60 * 1000;
 
     return chats.reduce((acc: any, chat) => {
+      if (chat.isPinned) {
+        acc.pinned.push(chat);
+        return acc;
+      }
+
       const chatDate = chat._creationTime;
 
       if (chatDate >= todayStart) {
@@ -76,73 +88,76 @@ export function CustomDrawerContent(props: any) {
       }
 
       return acc;
-    }, { today: [], yesterday: [], older: [] });
+    }, { pinned: [], today: [], yesterday: [], older: [] });
   }, [chats]);
 
   return (
-    <View className="flex-1 bg-background">
+    <View className="w-64 flex-1 bg-[#f3e4f5] dark:bg-[#181217]">
       {/* Header */}
-      <View className="p-4 border-b border-border">
-        <Text className="text-xl font-semibold text-foreground mb-4">
-          T3.chat
-        </Text>
-        
-        {/* New Chat Button */}
+      <View className="p-4">
+        <View className="flex-row items-center justify-between mb-4">
+          <View className="flex-row items-center gap-2">
+            <Ionicons name="menu" size={20} style={{ color: 'hsl(var(--text-muted))' }} />
+            <Text className="text-lg font-semibold text-[hsl(var(--text-primary))]">T3.chat</Text>
+          </View>
+          <View className="flex-row items-center gap-2">
+            <Ionicons name="cash-outline" size={16} style={{ color: 'hsl(var(--text-muted))' }} />
+            <ThemeToggle />
+          </View>
+        </View>
         <Button
           onPress={() => router.push('/')}
-          className="w-full mb-4 bg-primary"
+          className="w-full rounded-lg py-2.5 font-medium bg-[hsl(var(--primary-accent))]"
         >
-          <Text className="text-primary-foreground font-medium">
-            New Chat
-          </Text>
+          <Text className="font-semibold text-white">New Chat</Text>
         </Button>
+      </View>
 
-        {/* Search */}
-        <Input
-          placeholder="Search your threads..."
-          className="bg-secondary border-border"
-        />
+      {/* Search */}
+      <View className="px-4 pb-4">
+        <View className="relative">
+          <View className="absolute left-3 top-1/2 -translate-y-1/2">
+            <Ionicons name="search" size={16} style={{ color: 'hsl(var(--text-muted))' }} />
+          </View>
+          <Input
+            placeholder="Search your threads..."
+            className="pl-10 rounded-lg bg-[hsl(var(--input-bg))] border-[hsl(var(--input-border))] text-[hsl(var(--text-primary))]"
+          />
+        </View>
       </View>
 
       {/* Chat History */}
-      <ScrollView className="flex-1 p-2">
+      <ScrollView className="flex-1 px-4">
+        <ChatSection title="Pinned" chats={organizedChats.pinned} icon="pin" />
         <ChatSection title="Today" chats={organizedChats.today} />
         <ChatSection title="Yesterday" chats={organizedChats.yesterday} />
         {organizedChats.older.length > 0 && (
-          <ChatSection title="Previous" chats={organizedChats.older} />
+          <ChatSection title="Last 7 Days" chats={organizedChats.older} />
         )}
       </ScrollView>
 
-      {/* Bottom Section */}
-      <View className="p-4 border-t border-border">
-        <View className="flex-row items-center justify-between mb-3">
-          <View className="flex-row items-center gap-3 flex-1">
-            <Avatar className="w-8 h-8" alt={`${user?.firstName || 'User'} profile`}>
-              <Text className="text-xs">
+      {/* User Profile */}
+      <View className="p-4 ">
+        <View className="flex-row items-center gap-3">
+          <Avatar className="w-8 h-8" alt={`${user?.firstName || 'User'} profile`}>
+            <AvatarFallback 
+              className="text-sm font-medium bg-[hsl(var(--primary-accent))]"
+            >
+              <Text className="font-semibold text-white">
                 {user?.firstName?.[0]?.toUpperCase() || 'U'}
               </Text>
-            </Avatar>
-            <View className="flex-1">
-              <Text className="text-sm font-medium text-foreground">
-                {user?.firstName || 'User'}
-              </Text>
-              <Text className="text-xs text-muted-foreground">
-                Pro
-              </Text>
-            </View>
+            </AvatarFallback>
+          </Avatar>
+          <View className="flex-1">
+            <Text className="text-sm font-semibold text-[hsl(var(--text-primary))]">
+              {user?.firstName} {user?.lastName}
+            </Text>
+            <Text className="text-xs font-medium text-[hsl(var(--text-muted))]">Pro</Text>
           </View>
-          <ThemeToggle />
         </View>
-        
-        <Button
-          variant="ghost"
-          onPress={() => signOut()}
-          className="w-full justify-start p-2 h-auto"
-        >
-          <Text className="text-muted-foreground text-sm">
-            Sign Out
-          </Text>
-        </Button>
+        <View className="mt-4">
+          <SignOutButton />
+        </View>
       </View>
     </View>
   );

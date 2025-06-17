@@ -1,70 +1,105 @@
-import { View, TextInput, Text, Pressable } from "react-native";
-import { BlurView } from 'expo-blur';
+"use client"
+
+import { View, TextInput, Text, Pressable } from "react-native"
+import { memo, useEffect } from "react"
+import { Button } from "~/components/ui/button"
+import { Ionicons } from "@expo/vector-icons"
+import { ModelSelector } from "./ModelSelector"
 
 interface ChatInputProps {
-  input: string;
-  onInputChange: (text: string) => void;
-  onSubmit: () => void;
-  selectedModel?: string;
-  isLoading?: boolean;
+  input: string
+  onInputChange: (text: string) => void
+  onSubmit: () => void
+  selectedModel: string
+  selectedProvider: string
+  onModelSelect: (provider: string, model: string) => void
+  isLoading?: boolean
 }
 
-export function ChatInput({
-  input,
-  onInputChange,
-  onSubmit,
-  selectedModel = "GPT-4.1",
-  isLoading = false,
-}: ChatInputProps) {
-  return (
-    <View className="absolute bottom-0 left-0 right-0 items-center">
-      <View className="h-[1px]" />
-      <View className="w-full max-w-[768px]">
-        <BlurView 
-          intensity={90} 
-          className="rounded-lg bg-red-100"
-          tint="dark"
-        >
-          <TextInput
-            className="text-foreground text-base px-4 py-3 pb-2"
-            placeholder="Type your message here..."
-            value={input}
-            onChangeText={onInputChange}
-            onSubmitEditing={onSubmit}
-            multiline
-            placeholderTextColor="rgba(255,255,255,0.4)"
-            style={{ 
-              textAlignVertical: 'top',
-              maxHeight: 120,
-            }}
-            autoCorrect={false}
-            spellCheck={false}
-          />
-          
-          <View className="flex-row items-center justify-between px-4 pb-3">
-            <View className="flex-row items-center gap-3">
-              <Text className="text-muted-foreground text-sm">
-                {selectedModel}
-              </Text>
-              <Pressable>
-                <Text className="text-muted-foreground text-base">📎</Text>
-              </Pressable>
+export const ChatInput = memo(
+  ({
+    input,
+    onInputChange,
+    onSubmit,
+    selectedProvider,
+    selectedModel,
+    onModelSelect,
+    isLoading = false,
+  }: ChatInputProps) => {
+    const canSubmit = input.trim().length > 0 && !isLoading
+
+    useEffect(() => {
+      if (input) {
+        onInputChange(input)
+      }
+    }, [input])
+
+    const handleSubmit = (e?: any) => {
+      if (e?.nativeEvent?.key === "Enter" && !e.nativeEvent.shiftKey) {
+        e.preventDefault?.()
+        if (canSubmit) {
+          onSubmit()
+        }
+        return
+      }
+    }
+
+    return (
+      <View className="absolute bottom-0 left-0 right-0">
+        {/* Outer container with rounded top corners and border */}
+        <View className="bg-[#fcf3fc] dark:bg-[#2a242f] border border-[#fadcfd] dark:border-[#2a242f] rounded-t-2xl mx-4 shadow-sm">
+          {/* Inner container with subtle border */}
+          <View className="border border-[hsl(var(--input-border))] rounded-t-2xl m-1 bg-[#fcf3fc] dark:bg-[#2a242f]">
+            <View className="py-1">
+              <View className="relative">
+                <TextInput
+                  className="w-full text-base px-3 py-2 bg-transparent text-[hsl(var(--text-primary))]"
+                  placeholder="Type your message here..."
+                  value={input}
+                  onChangeText={onInputChange}
+                  onKeyPress={handleSubmit}
+                  multiline={true}
+                  blurOnSubmit={false}
+                  returnKeyType="send"
+                  enablesReturnKeyAutomatically={true}
+                  style={{
+                    textAlignVertical: "center",
+                    minHeight: 36,
+                    maxHeight: 100,
+                    outline: "none",
+                  }}
+                  placeholderTextColor="#6b6b6b"
+                  autoCorrect={false}
+                  spellCheck={false}
+                  editable={!isLoading}
+                />
+              </View>
+              <View className="flex-row items-center gap-2">
+                <ModelSelector
+                  selectedProvider={selectedProvider}
+                  selectedModel={selectedModel}
+                  onModelSelect={onModelSelect}
+                />
+                <Button
+                  variant="ghost"
+                  className="flex-row items-center gap-1 px-2 py-1 rounded-lg bg-transparent"
+                  onPress={() => {}}
+                >
+                  <Ionicons name="attach" size={12} color="#6b6b6b" />
+                  <Text className="text-xs text-[hsl(var(--secondary-accent))]">Attach</Text>
+                </Button> 
+                <Pressable
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 rounded-lg w-10 h-10 items-center justify-center bg-[#cd98b2] dark:bg-[#3a2033]"
+                    onPress={() => handleSubmit()}
+                    disabled={!canSubmit}
+                  >
+                    <Ionicons name="arrow-up" size={14} color="white" />
+                </Pressable>
+              </View>
             </View>
-            
-            <Pressable 
-              className={`w-8 h-8 rounded-lg items-center justify-center bg-primary ${
-                !input.trim() ? 'opacity-50' : ''
-              }`}
-              onPress={onSubmit}
-              disabled={!input.trim() || isLoading}
-            >
-              <Text className="text-primary-foreground text-lg">
-                {isLoading ? "..." : "↑"}
-              </Text>
-            </Pressable>
           </View>
-        </BlurView>
+        </View>
       </View>
-    </View>
-  );
-}
+    )
+  },
+)
