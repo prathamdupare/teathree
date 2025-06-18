@@ -4,6 +4,18 @@ import { CustomMarkdown } from "../CustomMarkdown";
 import { memo, useState, useCallback, useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from 'expo-clipboard';
+import { AI_PROVIDERS } from '~/lib/ai-providers';
+
+interface MessageMetadata {
+  tokenCount?: number;
+  processingTime?: number;
+  finishReason?: string;
+  reasoning?: string;
+}
+
+interface ExtendedMessage extends Message {
+  metadata?: MessageMetadata;
+}
 
 interface MessageListProps {
   messages?: Message[];
@@ -14,13 +26,49 @@ const TypingIndicator = () => (
   <Text className="font-bold text-3xl">...</Text>
 );
 
-const MessageItem = memo(({ message }: { message: Message }) => {
+const MessageItem = memo(({ message }: { message: ExtendedMessage }) => {
   const isOptimistic = typeof message._id === 'string' && message._id.startsWith('temp-');
   const isLoading = !message.isComplete;
   const isAI = message.role === 'assistant';
   const [isMessageHovered, setIsMessageHovered] = useState(false);
   const [isCopyHovered, setIsCopyHovered] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
+  const [showReasoning, setShowReasoning] = useState(false);
+
+  // Extract reasoning based on provider and model
+  const extractReasoning = (content: string, provider?: string, model?: string) => {
+    if (!provider || !model) return null;
+
+    // Get provider config
+    const providerConfig = AI_PROVIDERS[provider as keyof typeof AI_PROVIDERS];
+    if (!providerConfig) return null;
+
+    // Get model config
+    const modelConfig = providerConfig.models.find(m => m.id === model);
+    if (!modelConfig?.supportsReasoning) return null;
+
+    switch (modelConfig.reasoningType) {
+      case 'thinking':
+        const thinkMatch = content.match(/<think>(.*?)<\/think>/s);
+        return thinkMatch ? thinkMatch[1].trim() : null;
+      case 'reasoning':
+        const reasonMatch = content.match(/<reason>(.*?)<\/reason>/s);
+        return reasonMatch ? reasonMatch[1].trim() : null;
+      case 'native':
+        // For models with native reasoning (like OpenAI's o-series)
+        // The reasoning is part of the metadata
+        return message.metadata?.reasoning || null;
+      default:
+        return null;
+    }
+  };
+
+  const reasoning = isAI ? extractReasoning(message.content, message.provider, message.model) : null;
+  const displayContent = isAI && reasoning ? 
+    message.content.replace(/<think>.*?<\/think>/s, '')
+      .replace(/<reason>.*?<\/reason>/s, '')
+      .trim() : 
+    message.content;
 
   useEffect(() => {
     if (hasCopied) {
@@ -64,7 +112,7 @@ const MessageItem = memo(({ message }: { message: Message }) => {
                     : 'text-[hsl(var(--text-primary))]'
                 }`}
               >
-                <CustomMarkdown content={message.content} />
+                <CustomMarkdown content={displayContent} />
               </Text>
             )}
           </View>
@@ -84,6 +132,24 @@ const MessageItem = memo(({ message }: { message: Message }) => {
             >
               {message.model}
             </Text>
+          )}
+          {reasoning && (
+            <Pressable
+              onPress={() => setShowReasoning(!showReasoning)}
+              className={`flex-row items-center justify-center px-2 py-1 rounded transition-all duration-200 ${
+                showReasoning
+                  ? 'bg-[#b02372] dark:bg-[#d7c2ce]'
+                  : 'bg-[#f5dbef] dark:bg-[#2b2431]'
+              }`}
+            >
+              <Text className={`text-xs ${
+                showReasoning
+                  ? 'text-white dark:text-[#2b2431]'
+                  : 'text-[#b02372] dark:text-[#d7c2ce]'
+              }`}>
+                {showReasoning ? 'Hide Reasoning' : 'Show Reasoning'}
+              </Text>
+            </Pressable>
           )}
           <Pressable
             onPress={copyToClipboard}
@@ -107,6 +173,17 @@ const MessageItem = memo(({ message }: { message: Message }) => {
               }`}
             />
           </Pressable>
+        </View>
+      )}
+      
+      {reasoning && showReasoning && (
+        <View className="mt-2 px-4">
+          <View className="bg-[#f5dbef]/30 dark:bg-[#2b2431] rounded-lg p-3 border border-[#f5dbef]/50 dark:border-[#181217]">
+            <Text className="text-sm text-[#b02372] dark:text-[#d7c2ce] font-medium mb-1">
+              Reasoning Process:
+            </Text>
+            <CustomMarkdown content={reasoning} />
+          </View>
         </View>
       )}
     </Pressable>

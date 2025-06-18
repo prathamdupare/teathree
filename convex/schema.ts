@@ -28,6 +28,8 @@ export default defineSchema({
             tokenCount: v.optional(v.number()),
             processingTime: v.optional(v.number()),
             finishReason: v.optional(v.string()),
+            reasoning: v.optional(v.string()),
+            reasoningTokens: v.optional(v.number()),
         })),
     })
     .index("by_chat_created", ["chatId", "createdAt"])

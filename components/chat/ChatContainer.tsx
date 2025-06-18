@@ -11,11 +11,38 @@ import { generateAPIUrl } from '~/app/utils/utils';
 import type { PropsWithChildren } from 'react';
 import { ChatInput } from './ChatInput';
 import { AI_PROVIDERS } from "~/lib/ai-providers";
+import type { Message } from "~/types";
 
 interface ChatContainerProps {
   chatId: Id<"chats"> | null;
   onChatCreated?: (newChatId: Id<"chats">) => void;
   defaultInputValue?: string;
+}
+
+interface MessageMetadata {
+  tokenCount?: number;
+  processingTime?: number;
+  finishReason?: string;
+  reasoning?: string;
+  reasoningTokens?: number;
+}
+
+interface UIMessage {
+  _id: Id<"messages"> | string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  isComplete?: boolean;
+  createdAt: number;
+  updatedAt: number;
+  provider?: string;
+  model?: string;
+  metadata?: MessageMetadata;
+}
+
+interface StreamMessage extends UIMessage {
+  metadata?: MessageMetadata & {
+    reasoning?: string;
+  };
 }
 
 export function ChatContainer({ 
@@ -25,7 +52,7 @@ export function ChatContainer({
   children 
 }: PropsWithChildren<ChatContainerProps>) {
   const { user } = useUser();
-  const [localMessages, setLocalMessages] = useState<any[]>([]);
+  const [localMessages, setLocalMessages] = useState<UIMessage[]>([]);
   const [currentAiMessageId, setCurrentAiMessageId] = useState<Id<"messages"> | null>(null);
   const lastUpdateRef = useRef<string>('');
   const createStreamingMessage = useMutation(api.messages.createStreamingMessage);
@@ -82,7 +109,26 @@ export function ChatContainer({
       provider: selectedProvider,
       model: selectedModel
     },
-    onError: error => console.error(error, 'ERROR'),
+    onError: (error) => {
+      console.error('[Chat] Stream Error:', {
+        error,
+        provider: selectedProvider,
+        model: selectedModel,
+        currentChatId: chatId
+      });
+      
+      // Reset the optimistic UI state on error
+      if (currentAiMessageId) {
+        setLocalMessages(messages => 
+          messages.map(msg => 
+            msg._id === currentAiMessageId 
+              ? { ...msg, content: 'Error: Failed to generate response. Please try again.', isComplete: true }
+              : msg
+          )
+        );
+        setCurrentAiMessageId(null);
+      }
+    },
   });
 
   useEffect(() => {
@@ -105,11 +151,18 @@ export function ChatContainer({
   }, [convexMessages, isStreamingLoading, currentAiMessageId]);
 
   const handleSubmit = async () => {
-    if (!streamingInput.trim() || !user?.id || isStreamingLoading) return;
+    if (!streamingInput.trim() || !user?.id || isStreamingLoading) {
+      console.log('[Chat] Submit blocked:', { 
+        hasInput: !!streamingInput.trim(), 
+        hasUser: !!user?.id, 
+        isLoading: isStreamingLoading 
+      });
+      return;
+    }
 
     const timestamp = Date.now();
     
-    const optimisticUserMessage = {
+    const optimisticUserMessage: UIMessage = {
       _id: `temp-user-${timestamp}`,
       role: 'user',
       content: streamingInput,
@@ -118,7 +171,7 @@ export function ChatContainer({
       isComplete: true
     };
 
-    const optimisticAiMessage = {
+    const optimisticAiMessage: UIMessage = {
       _id: `temp-ai-${timestamp}`,
       role: 'assistant',
       content: '...',
@@ -132,6 +185,12 @@ export function ChatContainer({
     try {
       let targetChatId = chatId;
       if (!targetChatId) {
+        console.log('[Chat] Creating new chat:', { 
+          userId: user.id,
+          provider: selectedProvider,
+          model: selectedModel
+        });
+        
         targetChatId = await createChat({
           title: 'New Chat',
           userId: user.id,
@@ -140,6 +199,7 @@ export function ChatContainer({
         });
 
         try {
+          console.log('[Chat] Generating title for new chat');
           const titleResponse = await fetch(generateAPIUrl('/api/gettitle'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -151,10 +211,10 @@ export function ChatContainer({
           });
           
           const data = await titleResponse.json();
-          console.log('Title API response:', data);
+          console.log('[Chat] Title API response:', data);
           
           if (data.error) {
-            console.error('Title generation failed:', data.error);
+            console.error('[Chat] Title generation failed:', data);
             throw new Error(data.details || data.error);
           }
 
@@ -165,7 +225,11 @@ export function ChatContainer({
             });
           }
         } catch (error) {
-          console.error('Failed to generate/update title:', error);
+          console.error('[Chat] Failed to generate/update title:', {
+            error,
+            chatId: targetChatId,
+            input: streamingInput
+          });
           // Use a simple title as fallback
           await updateChatTitle({
             chatId: targetChatId,
@@ -176,6 +240,11 @@ export function ChatContainer({
         onChatCreated?.(targetChatId);
       }
 
+      console.log('[Chat] Creating user message:', {
+        chatId: targetChatId,
+        content: streamingInput.length
+      });
+
       await createStreamingMessage({
         chatId: targetChatId,
         role: 'user',
@@ -185,6 +254,7 @@ export function ChatContainer({
         updatedAt: timestamp,
       });
 
+      console.log('[Chat] Creating AI message placeholder');
       const aiMessageId = await createStreamingMessage({
         chatId: targetChatId,
         role: 'assistant',
@@ -198,9 +268,16 @@ export function ChatContainer({
 
       setCurrentAiMessageId(aiMessageId);
 
+      console.log('[Chat] Starting stream');
       await handleStreamingSubmit({} as any);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('[Chat] Error during submission:', {
+        error,
+        chatId,
+        provider: selectedProvider,
+        model: selectedModel
+      });
+      
       setLocalMessages(convexMessages || []);
     }
   };
@@ -209,12 +286,55 @@ export function ChatContainer({
     const updateStreamingMessage = async () => {
       if (!currentAiMessageId || !streamingMessages.length) return;
 
-      const lastMessage = streamingMessages[streamingMessages.length - 1];
+      const lastMessage = streamingMessages[streamingMessages.length - 1] as unknown as StreamMessage;
       if (lastMessage?.role === 'assistant' && lastMessage.content) {
+        // Extract reasoning from content based on provider and model
+        const providerConfig = AI_PROVIDERS[selectedProvider as keyof typeof AI_PROVIDERS];
+        const modelConfig = providerConfig?.models.find(m => m.id === selectedModel);
+        
+        let reasoning: string | undefined;
+        let content = lastMessage.content;
+
+        if (modelConfig?.supportsReasoning) {
+          switch (modelConfig.reasoningType) {
+            case 'thinking': {
+              const match = content.match(/<think>(.*?)<\/think>/s);
+              if (match) {
+                reasoning = match[1].trim();
+                content = content.replace(/<think>.*?<\/think>/s, '').trim();
+              }
+              break;
+            }
+            case 'reasoning': {
+              const match = content.match(/<reason>(.*?)<\/reason>/s);
+              if (match) {
+                reasoning = match[1].trim();
+                content = content.replace(/<reason>.*?<\/reason>/s, '').trim();
+              }
+              break;
+            }
+            case 'native': {
+              // For native reasoning models (like OpenAI's o-series)
+              // The reasoning is already in the metadata
+              reasoning = lastMessage.metadata?.reasoning;
+              break;
+            }
+          }
+        }
+
         setLocalMessages(prev => 
           prev.map(msg => 
             msg._id === currentAiMessageId 
-              ? { ...msg, content: lastMessage.content, isComplete: !isStreamingLoading }
+              ? { 
+                  ...msg, 
+                  content, 
+                  isComplete: !isStreamingLoading,
+                  metadata: {
+                    ...msg.metadata,
+                    ...(reasoning && { reasoning }),
+                    ...(lastMessage.metadata || {})
+                  }
+                }
               : msg
           )
         );
@@ -222,8 +342,12 @@ export function ChatContainer({
         if (lastMessage.content !== lastUpdateRef.current) {
           await updateMessageContent({
             messageId: currentAiMessageId,
-            content: lastMessage.content,
+            content,
             isComplete: !isStreamingLoading,
+            metadata: {
+              ...(reasoning && { reasoning }),
+              ...(lastMessage.metadata || {})
+            }
           });
           lastUpdateRef.current = lastMessage.content;
         }
@@ -236,14 +360,14 @@ export function ChatContainer({
     };
 
     updateStreamingMessage();
-  }, [streamingMessages, isStreamingLoading, currentAiMessageId]);
+  }, [streamingMessages, isStreamingLoading, currentAiMessageId, selectedProvider, selectedModel]);
 
   return (
     <View className="flex-1 flex flex-col bg-[#f8f2f8] dark:bg-[#221d27] border-t-[10px] border-[#f5dbef] dark:border-[#181217] rounded-t-lg">
       <View className="max-w-4xl mx-auto w-full flex-1">
         {children}
         <View className="flex-1">
-          <MessageList messages={localMessages} />
+          <MessageList messages={localMessages as unknown as Message[]} />
         </View>
         <ChatInput
           input={defaultInputValue || streamingInput}
@@ -253,7 +377,6 @@ export function ChatContainer({
             } as unknown as React.ChangeEvent<HTMLInputElement>)
           }
           onSubmit={handleSubmit}
-          isLoading={isStreamingLoading}
           selectedProvider={selectedProvider}
           selectedModel={selectedModel}
           onModelSelect={handleProviderModelChange}

@@ -23,6 +23,9 @@ export const addMessage = mutation({
         metadata: v.optional(v.object({
             tokenCount: v.optional(v.number()),
             processingTime: v.optional(v.number()),
+            finishReason: v.optional(v.string()),
+            reasoning: v.optional(v.string()),
+            reasoningTokens: v.optional(v.number()),
         })),
         createdAt: v.number(),
         updatedAt: v.number(),
@@ -52,13 +55,33 @@ export const updateMessageContent = mutation({
         messageId: v.id("messages"),
         content: v.string(),
         isComplete: v.optional(v.boolean()),
+        metadata: v.optional(v.object({
+            tokenCount: v.optional(v.number()),
+            processingTime: v.optional(v.number()),
+            finishReason: v.optional(v.string()),
+            reasoning: v.optional(v.string()),
+            reasoningTokens: v.optional(v.number()),
+        })),
     },
     handler: async (ctx, args) => {
-        await ctx.db.patch(args.messageId, {
+        const updateData: any = {
             content: args.content,
             updatedAt: Date.now(),
-            ...(args.isComplete && { isComplete: true })
-        });
+        };
+
+        if (args.isComplete !== undefined) {
+            updateData.isComplete = args.isComplete;
+        }
+
+        if (args.metadata) {
+            const existingMessage = await ctx.db.get(args.messageId);
+            updateData.metadata = {
+                ...existingMessage?.metadata,
+                ...args.metadata,
+            };
+        }
+
+        await ctx.db.patch(args.messageId, updateData);
     },
 })
 
@@ -70,6 +93,13 @@ export const createStreamingMessage = mutation({
         provider: v.optional(v.string()),
         model: v.optional(v.string()),
         isComplete: v.optional(v.boolean()),
+        metadata: v.optional(v.object({
+            tokenCount: v.optional(v.number()),
+            processingTime: v.optional(v.number()),
+            finishReason: v.optional(v.string()),
+            reasoning: v.optional(v.string()),
+            reasoningTokens: v.optional(v.number()),
+        })),
         createdAt: v.number(),
         updatedAt: v.number(),
     },
@@ -80,6 +110,7 @@ export const createStreamingMessage = mutation({
             content: args.content,
             provider: args.provider,
             model: args.model,
+            metadata: args.metadata,
             isComplete: args.isComplete || false,
             createdAt: args.createdAt,
             updatedAt: args.updatedAt,

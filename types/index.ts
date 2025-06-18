@@ -15,5 +15,7 @@ export interface Message {
     tokenCount?: number;
     processingTime?: number;
     finishReason?: string;
+    reasoning?: string;
+    reasoningTokens?: number;
   };
 } 

@@ -142,68 +142,62 @@ const CodeBlock = ({ children }: { children: React.ReactNode }) => {
 };
 
 const rules: RenderRules = {
-  heading1: (_node: MarkdownNode, children: React.ReactNode) => (
-    <H1 key="h1" className="font-semibold text-2xl text-foreground mb-4 tracking-tight">{children}</H1>
+  heading1: (node: MarkdownNode, children: React.ReactNode) => (
+    <H1 key={`h1-${node.key || Math.random()}`} className="font-semibold text-2xl text-foreground mb-4 tracking-tight">{children}</H1>
   ),
-  heading2: (_node: MarkdownNode, children: React.ReactNode) => (
-    <H2 key="h2" className="font-semibold text-xl text-foreground mb-3 tracking-tight">{children}</H2>
+  heading2: (node: MarkdownNode, children: React.ReactNode) => (
+    <H2 key={`h2-${node.key || Math.random()}`} className="font-semibold text-xl text-foreground mb-3 tracking-tight">{children}</H2>
   ),
-  heading3: (_node: MarkdownNode, children: React.ReactNode) => (
-    <H3 key="h3" className="font-semibold text-lg text-foreground mb-3 tracking-tight">{children}</H3>
+  heading3: (node: MarkdownNode, children: React.ReactNode) => (
+    <H3 key={`h3-${node.key || Math.random()}`} className="font-semibold text-lg text-foreground mb-3 tracking-tight">{children}</H3>
   ),
-  heading4: (_node: MarkdownNode, children: React.ReactNode) => (
-    <H4 key="h4" className="font-semibold text-base text-foreground mb-2 tracking-tight">{children}</H4>
+  heading4: (node: MarkdownNode, children: React.ReactNode) => (
+    <H4 key={`h4-${node.key || Math.random()}`} className="font-semibold text-base text-foreground mb-2 tracking-tight">{children}</H4>
   ),
-  heading5: (_node: MarkdownNode, children: React.ReactNode) => (
-    <H5 key="h5" className="font-semibold text-sm text-foreground mb-2 tracking-tight">{children}</H5>
+  heading5: (node: MarkdownNode, children: React.ReactNode) => (
+    <H5 key={`h5-${node.key || Math.random()}`} className="font-semibold text-sm text-foreground mb-2 tracking-tight">{children}</H5>
   ),
-  heading6: (_node: MarkdownNode, children: React.ReactNode) => (
-    <H6 key="h6" className="font-semibold text-sm text-foreground mb-2 tracking-tight">{children}</H6>
+  heading6: (node: MarkdownNode, children: React.ReactNode) => (
+    <H6 key={`h6-${node.key || Math.random()}`} className="font-semibold text-sm text-foreground mb-2 tracking-tight">{children}</H6>
   ),
-  paragraph: (_node: MarkdownNode, children: React.ReactNode) => (
-    <P key={_node.key} className="font-sans text-base text-foreground leading-relaxed mb-4 last:mb-0 tracking-tight">{children}</P>
+  paragraph: (node: MarkdownNode, children: React.ReactNode) => (
+    <P key={`p-${node.key || Math.random()}`} className="font-sans text-base text-foreground leading-relaxed mb-4 last:mb-0 tracking-tight">{children}</P>
   ),
   code_block: (node: MarkdownNode, children: React.ReactNode) => {
+    const language = node.attributes?.language || 'typescript';
     return (
-      <ScrollView key="code-block" horizontal showsHorizontalScrollIndicator={false}>
-        <View className="my-4 w-full">
-          <CodeBlock>{children}</CodeBlock>
-        </View>
+      <ScrollView key={`code-${node.key || Math.random()}`} horizontal showsHorizontalScrollIndicator={false}>
+        <CodeBlock>{children}</CodeBlock>
       </ScrollView>
     );
   },
   code_inline: (node: MarkdownNode, children: React.ReactNode) => (
-    <Code 
-      key={node.key} 
-      className="font-mono text-sm bg-[#f5dbef]/30 dark:bg-[#1b1219] text-[#560f2b] dark:text-[#f5dbef] px-1.5 py-0.5 rounded border border-[#f5dbef]/50 dark:border-[#2b2431]"
-    >
-      {children}
-    </Code>
+    <Code key={`inline-code-${node.key || Math.random()}`} className="font-mono text-sm bg-[#f5dbef]/30 dark:bg-[#1b1219] text-[#560f2b] dark:text-[#f5dbef] px-1.5 py-0.5 rounded border border-[#f5dbef]/50 dark:border-[#2b2431]">{children}</Code>
   ),
   list_item: (node: MarkdownNode, children: React.ReactNode) => (
-    <View key={`li-${node.index}`} className="flex-row items-start mb-1 last:mb-0 pl-4">
+    <View key={`li-${node.key || node.index || Math.random()}`} className="flex-row items-start mb-1 last:mb-0 pl-4">
       <Text className="text-[#b02372] dark:text-[#d7c2ce] mr-2 mt-1">•</Text>
       <View className="flex-1">{children}</View>
     </View>
   ),
-  ordered_list: (_node: MarkdownNode, children: React.ReactNode) => (
-    <Ol key="ol" className="space-y-1 mb-4 pl-4">{children}</Ol>
+  ordered_list: (node: MarkdownNode, children: React.ReactNode) => (
+    <Ol key={`ol-${node.key || Math.random()}`} className="space-y-1 mb-4 pl-4">{children}</Ol>
   ),
-  unordered_list: (_node: MarkdownNode, children: React.ReactNode) => (
-    <Ul key="ul" className="space-y-1 mb-4">{children}</Ul>
+  unordered_list: (node: MarkdownNode, children: React.ReactNode) => (
+    <Ul key={`ul-${node.key || Math.random()}`} className="space-y-1 mb-4">{children}</Ul>
   ),
-  em: (_node: MarkdownNode, children: React.ReactNode) => (
-    <I key={_node.key} className="font-italic text-foreground">{children}</I>
+  em: (node: MarkdownNode, children: React.ReactNode) => (
+    <I key={`em-${node.key || Math.random()}`} className="font-italic text-foreground">{children}</I>
   ),
-  strong: (_node: MarkdownNode, children: React.ReactNode) => (
-    <Strong key={_node.key} className="font-semibold text-foreground">{children}</Strong>
+  strong: (node: MarkdownNode, children: React.ReactNode) => (
+    <Strong key={`strong-${node.key || Math.random()}`} className="font-semibold text-foreground">{children}</Strong>
   ),
-  del: (_node: MarkdownNode, children: React.ReactNode) => (
-    <Del key={_node.key} className="line-through text-muted-foreground">{children}</Del>
+  del: (node: MarkdownNode, children: React.ReactNode) => (
+    <Del key={`del-${node.key || Math.random()}`} className="line-through text-muted-foreground">{children}</Del>
   ),
   link: (node: MarkdownNode, children: React.ReactNode) => (
     <A
-      key={node.key}
+      key={`link-${node.key || Math.random()}`}
       className="text-[#b02372] dark:text-[#d7c2ce] underline decoration-[#b02372]/30 dark:decoration-[#d7c2ce]/30 hover:decoration-[#b02372] dark:hover:decoration-[#d7c2ce]"
       target="_blank"
       rel="noreferrer"
@@ -214,47 +208,47 @@ const rules: RenderRules = {
   ),
   image: (node: MarkdownNode) => (
     <Image
-      key={`img-${node.attributes?.src}`}
+      key={`img-${node.key || node.attributes?.src || Math.random()}`}
       source={{ uri: node.attributes?.src }}
       className="rounded-lg my-4 w-full"
       style={{ height: 200 }}
       resizeMode="cover"
     />
   ),
-  blockquote: (_node: MarkdownNode, children: React.ReactNode) => (
-    <View key="blockquote" className="border-l-2 border-primary/30 pl-4 my-4 italic text-muted-foreground">
+  blockquote: (node: MarkdownNode, children: React.ReactNode) => (
+    <View key={`blockquote-${node.key || Math.random()}`} className="border-l-2 border-primary/30 pl-4 my-4 italic text-muted-foreground">
       {children}
     </View>
   ),
-  table: (_node: MarkdownNode, children: React.ReactNode) => (
-    <ScrollView key="table" horizontal showsHorizontalScrollIndicator={false}>
+  table: (node: MarkdownNode, children: React.ReactNode) => (
+    <ScrollView key={`table-${node.key || Math.random()}`} horizontal showsHorizontalScrollIndicator={false}>
       <Table className="my-4 border-collapse">
         {children}
       </Table>
     </ScrollView>
   ),
-  thead: (_node: MarkdownNode, children: React.ReactNode) => (
-    <THead key="thead" className="bg-secondary/10">{children}</THead>
+  thead: (node: MarkdownNode, children: React.ReactNode) => (
+    <THead key={`thead-${node.key || Math.random()}`} className="bg-secondary/10">{children}</THead>
   ),
-  tbody: (_node: MarkdownNode, children: React.ReactNode) => (
-    <TBody key="tbody">{children}</TBody>
+  tbody: (node: MarkdownNode, children: React.ReactNode) => (
+    <TBody key={`tbody-${node.key || Math.random()}`}>{children}</TBody>
   ),
   tr: (node: MarkdownNode, children: React.ReactNode) => (
-    <TR key={`tr-${node.index}`} className="border-b border-border/50">{children}</TR>
+    <TR key={`tr-${node.key || node.index || Math.random()}`} className="border-b border-border/50">{children}</TR>
   ),
   th: (node: MarkdownNode, children: React.ReactNode) => (
-    <TH key={`th-${node.index}`} className="p-2 text-left font-medium text-foreground">{children}</TH>
+    <TH key={`th-${node.key || node.index || Math.random()}`} className="p-2 text-left font-medium text-foreground">{children}</TH>
   ),
   td: (node: MarkdownNode, children: React.ReactNode) => (
-    <TD key={`td-${node.index}`} className="p-2 text-foreground">{children}</TD>
+    <TD key={`td-${node.key || node.index || Math.random()}`} className="p-2 text-foreground">{children}</TD>
   ),
   text: (node: MarkdownNode) => {
-    return <Text key={node.key} className="font-sans text-foreground leading-relaxed tracking-tight">{node.content}</Text>;
+    return <Text key={`text-${node.key || Math.random()}`} className="font-sans text-foreground leading-relaxed tracking-tight">{node.content}</Text>;
   },
-  body: (_node: MarkdownNode, children: React.ReactNode) => {
-    return <View key="body" className="space-y-2">{children}</View>;
+  body: (node: MarkdownNode, children: React.ReactNode) => {
+    return <View key={`body-${node.key || Math.random()}`} className="space-y-2">{children}</View>;
   },
-  hr: () => <View key="hr" className="my-6 h-px bg-border/50" />,
+  hr: (node: MarkdownNode) => <View key={`hr-${node.key || Math.random()}`} className="my-6 h-px bg-border/50" />,
 };
 
 export interface CustomMarkdownProps {

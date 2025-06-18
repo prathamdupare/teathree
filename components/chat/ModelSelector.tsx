@@ -1,4 +1,4 @@
-import { View, Pressable } from 'react-native';
+import { View, Pressable, ScrollView } from 'react-native';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,73 +62,89 @@ export function ModelSelector({
             />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-[280px] bg-[#f3e4f5] dark:bg-[#181217] border-[#b02372] dark:border-[#d7c2ce] rounded-lg shadow-lg">
-          {Object.entries(AI_PROVIDERS).map(([providerId, provider]) => (
-            <Animated.View key={providerId} entering={FadeIn.duration(200)}>
-              <DropdownMenuLabel className="flex-row items-center gap-2 px-3 py-2">
-                <Ionicons
-                  name={getProviderIcon(providerId)}
-                  size={18}
-                  color="#560f2b"
-                  className="dark:text-[#c46095]"
-                />
-                <Text className="text-[#560f2b] dark:text-[#c46095] font-medium">
-                  {provider.name}
-                </Text>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-[#b02372] dark:bg-[#d7c2ce] opacity-20" />
-              <DropdownMenuGroup>
-                {provider.models.map((model) => (
-                  <DropdownMenuItem
-                    key={model.id}
-                    className="hover:bg-[#f5dbef] dark:hover:bg-[#2b2431] px-3 py-2"
-                  >
-                    <Pressable
-                      onPress={() => onModelSelect(providerId, model.id)}
-                      className="flex-1 flex-row items-center gap-2"
+        <DropdownMenuContent 
+          className="w-[280px] bg-[#f3e4f5] dark:bg-[#181217] border-[#b02372] dark:border-[#d7c2ce] rounded-lg shadow-lg"
+          style={{
+            maxHeight: 400,
+            overflow: 'hidden'
+          }}
+        >
+          <ScrollView 
+            className="flex-1"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingBottom: 8
+            }}
+          >
+            {Object.entries(AI_PROVIDERS).map(([providerId, provider]) => (
+              <Animated.View key={providerId} entering={FadeIn.duration(200)}>
+                <DropdownMenuLabel className="flex-row items-center gap-2 px-3 py-2">
+                  <Ionicons
+                    name={getProviderIcon(providerId)}
+                    size={18}
+                    color="#560f2b"
+                    className="dark:text-[#c46095]"
+                  />
+                  <Text className="text-[#560f2b] dark:text-[#c46095] font-medium">
+                    {provider.name}
+                  </Text>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-[#b02372] dark:bg-[#d7c2ce] opacity-20" />
+                <DropdownMenuGroup>
+                  {provider.models.map((model) => (
+                    <DropdownMenuItem
+                      key={model.id}
+                      className="hover:bg-[#f5dbef] dark:hover:bg-[#2b2431] px-3 py-2"
                     >
-                      <Ionicons
-                        name={getProviderIcon(providerId)}
-                        size={16}
-                        color={
-                          selectedProvider === providerId &&
-                          selectedModel === model.id
-                            ? '#560f2b'
-                            : '#b02372'
-                        }
-                        className="dark:text-[#d7c2ce]"
-                      />
-                      <View className="flex-1">
-                        <Text
-                          className={`text-[#b02372] dark:text-[#d7c2ce] ${
+                      <Pressable
+                        onPress={() => onModelSelect(providerId, model.id)}
+                        className="flex-1 flex-row items-center gap-2"
+                      >
+                        <Ionicons
+                          name={getProviderIcon(providerId)}
+                          size={16}
+                          color={
                             selectedProvider === providerId &&
                             selectedModel === model.id
-                              ? 'font-bold'
-                              : ''
-                          }`}
-                        >
-                          {model.name}
-                        </Text>
-                      </View>
-                      {selectedProvider === providerId &&
-                        selectedModel === model.id && (
-                          <Ionicons
-                            name="checkmark"
-                            size={16}
-                            color="#560f2b"
-                            className="dark:text-[#c46095]"
-                          />
-                        )}
-                    </Pressable>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuGroup>
-              {providerId !==
-                Object.keys(AI_PROVIDERS).slice(-1)[0] && (
-                <DropdownMenuSeparator className="bg-[#b02372] dark:bg-[#d7c2ce] opacity-20" />
-              )}
-            </Animated.View>
-          ))}
+                              ? '#560f2b'
+                              : '#b02372'
+                          }
+                          className="dark:text-[#d7c2ce]"
+                        />
+                        <View className="flex-1">
+                          <Text
+                            className={`text-[#b02372] dark:text-[#d7c2ce] ${
+                              selectedProvider === providerId &&
+                              selectedModel === model.id
+                                ? 'font-bold'
+                                : ''
+                            }`}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                          >
+                            {model.name}
+                          </Text>
+                        </View>
+                        {selectedProvider === providerId &&
+                          selectedModel === model.id && (
+                            <Ionicons
+                              name="checkmark"
+                              size={16}
+                              color="#560f2b"
+                              className="dark:text-[#c46095]"
+                            />
+                          )}
+                      </Pressable>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+                {providerId !==
+                  Object.keys(AI_PROVIDERS).slice(-1)[0] && (
+                  <DropdownMenuSeparator className="bg-[#b02372] dark:bg-[#d7c2ce] opacity-20" />
+                )}
+              </Animated.View>
+            ))}
+          </ScrollView>
         </DropdownMenuContent>
       </DropdownMenu>
     </View>
