@@ -16,6 +16,7 @@ import { tokenCache } from '@clerk/clerk-expo/token-cache'
 import { CustomDrawerContent } from '~/components/CustomDrawerContent';
 import { PortalHost } from '@rn-primitives/portal';
 import { useAppFonts } from '~/lib/fonts';
+import { QuickSelector } from '~/components/ui/quick-selector';
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -100,6 +101,7 @@ export default function RootLayout() {
           <ConvexProvider client={convex}>
             <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
               <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
+              <QuickSelector />
               <Drawer
                 drawerContent={(props) => <CustomDrawerContent {...props} />}
                 screenOptions={{

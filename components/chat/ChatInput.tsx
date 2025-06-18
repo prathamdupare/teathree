@@ -1,4 +1,4 @@
-import { View, TextInput, Text, Pressable } from "react-native"
+import { View, TextInput, Text, Pressable, useColorScheme } from "react-native"
 import { memo, useEffect } from "react"
 import { Button } from "~/components/ui/button"
 import { Ionicons } from "@expo/vector-icons"
@@ -24,6 +24,10 @@ const ChatInputComponent = ({
   isLoading = false,
 }: ChatInputProps) => {
   const canSubmit = input.trim().length > 0 && !isLoading
+  const colorScheme = useColorScheme()
+
+  // Choose icon color based on theme
+  const iconColor = colorScheme === "dark" ? "#bdbdbd" : "#6b6b6b"
 
   useEffect(() => {
     if (input) {
@@ -48,7 +52,7 @@ const ChatInputComponent = ({
   return (
     <View className="absolute bottom-0 left-0 right-0 m-0">
       {/* Outer container with rounded top corners and border */}
-      <View className="  border border-[#fadcfd] dark:border-[#3a242f] rounded-t-2xl mx-4 shadow-sm">
+      <View className="border border-[#fadcfd] dark:border-[#3a242f] rounded-t-2xl mx-4 shadow-sm">
         {/* Inner container with subtle border */}
         <View className="border border-[hsl(var(--input-border))] rounded-t-2xl m-1 bg-[#fcf3fc] dark:bg-[#2a242f]">
           <View className="py-1">
@@ -67,12 +71,16 @@ const ChatInputComponent = ({
                   textAlignVertical: "center",
                   minHeight: 36,
                   maxHeight: 100,
+                  // Remove outline: "none" (not needed in RN)
                   outline: "none",
+                  // No border color change on focus
+                  borderWidth: 0, // Ensures no border highlight on focus
                 }}
                 placeholderTextColor="#6b6b6b"
                 autoCorrect={false}
                 spellCheck={false}
                 editable={!isLoading}
+                // No onFocus/onBlur border color change
               />
             </View>
             <View className="flex-row items-center gap-2">
@@ -86,8 +94,11 @@ const ChatInputComponent = ({
                 className="flex-row items-center gap-1 px-2 py-1 rounded-lg bg-transparent"
                 onPress={() => {}}
               >
-                <Ionicons name="attach" size={12} color="#6b6b6b" />
-                <Text className="text-xs text-[#6b6b6b]">
+                <Ionicons name="attach" size={12} color={iconColor} />
+                <Text
+                  className="text-xs"
+                  style={{ color: iconColor }}
+                >
                   Attach
                 </Text>
               </Button>

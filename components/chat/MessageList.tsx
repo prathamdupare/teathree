@@ -1,7 +1,7 @@
-import { View, ScrollView, Text, Pressable } from "react-native";
+import { View, ScrollView, Text, Pressable, Platform } from "react-native";
 import type { Message } from "~/types";
 import { CustomMarkdown } from "../CustomMarkdown";
-import { memo } from "react";
+import { memo, useState, useCallback, useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from 'expo-clipboard';
 
@@ -18,62 +18,98 @@ const MessageItem = memo(({ message }: { message: Message }) => {
   const isOptimistic = typeof message._id === 'string' && message._id.startsWith('temp-');
   const isLoading = !message.isComplete;
   const isAI = message.role === 'assistant';
+  const [isMessageHovered, setIsMessageHovered] = useState(false);
+  const [isCopyHovered, setIsCopyHovered] = useState(false);
+  const [hasCopied, setHasCopied] = useState(false);
+
+  useEffect(() => {
+    if (hasCopied) {
+      const timer = setTimeout(() => setHasCopied(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [hasCopied]);
 
   const copyToClipboard = async () => {
     await Clipboard.setStringAsync(message.content);
+    setHasCopied(true);
   };
 
+  const isControlsVisible = Platform.OS === 'web' ? (isMessageHovered || isCopyHovered) : true;
+
   return (
-    <View 
-      className={`flex flex-row ${isAI ? 'justify-start' : 'justify-end'}`}
-      style={{ opacity: isOptimistic ? 0.7 : 1 }}
+    <Pressable 
+      className="mb-4 last:mb-0"
+      onHoverIn={() => Platform.OS === 'web' && setIsMessageHovered(true)}
+      onHoverOut={() => Platform.OS === 'web' && setIsMessageHovered(false)}
     >
       <View 
-        className={`max-w-[85%] rounded-2xl m-0 px-4 py-3 ${
-          isAI 
-            ? 'rounded bg-transparent' 
-            : 'rounded bg-[#f5dbef] dark:bg-[#2b2431]'
-        }`}
+        className={`flex flex-row ${isAI ? 'justify-start' : 'justify-end'}`}
+        style={{ opacity: isOptimistic ? 0.7 : 1 }}
       >
-        <View className="flex-1">
-          {message.content === '...' && isAI && isLoading ? (
-            <TypingIndicator />
-          ) : (
-            <Text 
-              className={`text-base p-0 m-0 ${
-                isAI 
-                  ? 'text-[hsl(var(--text-primary))]' 
-                  : 'text-[hsl(var(--text-primary))]'
-              }`}
-            >
-              <CustomMarkdown content={message.content} />
-            </Text>
-          )}
-        </View>
-        {!isLoading && isAI && (
-          <View className="flex-row items-center gap-2 mt-2">
-            {message.model && (
+        <View 
+          className={`max-w-[85%] rounded-2xl m-0 px-4 py-3 ${
+            isAI 
+              ? 'rounded bg-transparent' 
+              : 'rounded bg-[#f5dbef] dark:bg-[#2b2431]'
+          }`}
+        >
+          <View className="flex-1">
+            {message.content === '...' && isAI && isLoading ? (
+              <TypingIndicator />
+            ) : (
               <Text 
-                className="text-xs text-[hsl(var(--text-muted))]"
-                style={{ fontFamily: 'Ubuntu' }}
+                className={`text-base p-0 m-0 ${
+                  isAI 
+                    ? 'text-[hsl(var(--text-primary))]' 
+                    : 'text-[hsl(var(--text-primary))]'
+                }`}
               >
-                {message.model}
+                <CustomMarkdown content={message.content} />
               </Text>
             )}
-            <Pressable
-              onPress={copyToClipboard}
-              className="flex-row items-center justify-center w-6 h-6 rounded-full bg-[#f5dbef] dark:bg-[#2b2431] hover:bg-[#ecc7e4] dark:hover:bg-[#362d3c]"
-            >
-              <Ionicons 
-                name="copy-outline" 
-                size={14}
-                className="text-[#b02372] dark:text-[#d7c2ce]"
-              />
-            </Pressable>
           </View>
-        )}
+        </View>
       </View>
-    </View>
+      
+      {!isLoading && (
+        <View 
+          className={`flex-row items-center gap-2 mt-1 px-4 transition-opacity duration-200 ${
+            isControlsVisible ? 'opacity-100' : 'opacity-0'
+          } ${isAI ? 'justify-start' : 'justify-end'}`}
+        >
+          {isAI && message.model && (
+            <Text 
+              className="text-xs text-[hsl(var(--text-muted))]"
+              style={{ fontFamily: 'Ubuntu' }}
+            >
+              {message.model}
+            </Text>
+          )}
+          <Pressable
+            onPress={copyToClipboard}
+            onHoverIn={() => Platform.OS === 'web' && setIsCopyHovered(true)}
+            onHoverOut={() => Platform.OS === 'web' && setIsCopyHovered(false)}
+            className={`flex-row items-center justify-center w-6 h-6 rounded-full transition-all duration-200 ${
+              hasCopied
+                ? 'bg-[#b02372] dark:bg-[#d7c2ce]'
+                : isCopyHovered 
+                  ? 'bg-[#ecc7e4] dark:bg-[#362d3c]' 
+                  : 'bg-[#f5dbef] dark:bg-[#2b2431]'
+            }`}
+          >
+            <Ionicons 
+              name={hasCopied ? "checkmark" : "copy-outline"} 
+              size={16}
+              className={`transition-colors duration-200 ${
+                hasCopied
+                  ? 'text-white dark:text-[#2b2431]'
+                  : 'text-[#b02372] dark:text-[#d7c2ce]'
+              }`}
+            />
+          </Pressable>
+        </View>
+      )}
+    </Pressable>
   );
 });
 

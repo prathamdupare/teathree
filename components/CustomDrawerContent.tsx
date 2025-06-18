@@ -1,5 +1,5 @@
-import React from "react";
-import { View, ScrollView, Pressable } from "react-native";
+import React, { useState } from "react";
+import { View, ScrollView, Pressable, useColorScheme } from "react-native";
 import { useUser} from "@clerk/clerk-expo";
 import { router, usePathname } from "expo-router";
 import { Text } from "~/components/ui/text";
@@ -7,34 +7,52 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "~/components/ui/avatar";
 import { ThemeToggle } from "~/components/ui/theme-toggle";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "~/convex/_generated/api";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from '@expo/vector-icons/Ionicons';
+import AntDesign from '@expo/vector-icons/AntDesign';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SignOutButton } from "./SignOutButton";
 import { Separator } from "./ui/separator";
+import { Id } from "~/convex/_generated/dataModel";
 
 function ChatItem({
   title,
   onPress,
   id,
   isSelected,
+  isPinned,
 }: {
   title: string;
   onPress: () => void;
-  id: string;
+  id: Id<"chats">;
   isSelected: boolean;
+  isPinned: boolean;
 }) {
+  const [isItemHovered, setIsItemHovered] = useState(false);
+  const [isPinHovered, setIsPinHovered] = useState(false);
+  const pinChat = useMutation(api.chats.pinChat);
+
+  const handlePin = async (e: any) => {
+    e.stopPropagation();
+    await pinChat({ chatId: id });
+  };
+
+  const showPin = isItemHovered || isPinHovered || isPinned;
+
   return (
     <Pressable
       onPress={onPress}
-      className={`text-sm p-2 rounded-md cursor-pointer transition-colors ${
+      onHoverIn={() => setIsItemHovered(true)}
+      onHoverOut={() => setIsItemHovered(false)}
+      className={`flex-row items-center justify-between text-sm p-2 rounded-md cursor-pointer transition-colors ${
         isSelected 
-          ? 'bg-[#f5dbef] dark:bg-[#2b2431]' 
-          : 'hover:bg-[#f5dbef] dark:hover:bg-[#2b2431]'
+          ? 'bg-[#f8f8f7] dark:bg-[#261922]' 
+          : 'hover:bg-[#f8f8f7] dark:hover:bg-[#261922]'
       }`}
     >
       <Text 
-        className={`text-sm truncate transition-colors ${
+        className={`flex-1 text-sm truncate transition-colors ${
           isSelected
             ? 'text-[#560f2b] dark:text-[#d7c2ce]'
             : 'text-[#b02372] dark:text-[#d7c2ce] hover:text-[#560f2b]'
@@ -43,6 +61,28 @@ function ChatItem({
       >
         {title}
       </Text>
+      <Pressable
+        onPress={handlePin}
+        onHoverIn={() => setIsPinHovered(true)}
+        onHoverOut={() => setIsPinHovered(false)}
+        className={`w-6 h-6 items-center justify-center rounded-full transition-all duration-200 ${
+          showPin ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+        } ${
+          isPinHovered 
+            ? 'bg-[#ecc7e4] dark:bg-[#362d3c]' 
+            : 'hover:bg-[#ecc7e4] dark:hover:bg-[#362d3c]'
+        }`}
+      >
+        <AntDesign 
+          name={isPinned ? "pushpin" : "pushpino"}
+          size={14}
+          className={`transition-colors ${
+            isPinned 
+              ? 'text-[#560f2b] dark:text-[#d7c2ce]' 
+              : 'text-[#b02372] dark:text-[#d7c2ce]'
+          }`}
+        />
+      </Pressable>
     </Pressable>
   );
 }
@@ -85,6 +125,7 @@ function ChatSection({
               router.push(`/chat/${chat._id}`);
             }}
             isSelected={selectedChatId === chat._id}
+            isPinned={chat.isPinned}
           />
         ))}
       </View>
@@ -95,6 +136,7 @@ function ChatSection({
 export function CustomDrawerContent(props: any) {
   const { user } = useUser();
   const userImage = user?.imageUrl;
+  const colorScheme = useColorScheme();
   const chats = useQuery(
     api.chats.getUserChats,
     user?.id ? { userId: user.id } : "skip",
@@ -137,17 +179,22 @@ export function CustomDrawerContent(props: any) {
   }, [chats]);
 
   return (
-    <View className="w-64 flex-1 bg-[#f3e4f5] dark:bg-[#181217]">
+    <View className="w-64 flex-1">
+      <LinearGradient
+        colors={['#f2e5f4', '#f2e5f4']}
+        className="absolute inset-0 dark:hidden"
+      />
+      <LinearGradient
+        colors={['#1b1219', '#0e080c']}
+        className="absolute inset-0 hidden dark:flex"
+      />
       {/* Header */}
-      <View className="p-4">
+      <View className="relative p-4">
         <View className="flex-row items-center justify-between mb-4">
           <View className="flex-row items-center gap-2">
             <Text className="text-lg text-[hsl(var(--text-primary))]" style={{ fontFamily: 'Ubuntu-Medium' }}>
               Tea3 Chat
             </Text> 
-          </View>
-          <View className="flex-row items-center gap-2">
-            <ThemeToggle />
           </View>
         </View>
         <Button
@@ -159,23 +206,25 @@ export function CustomDrawerContent(props: any) {
       </View>
 
       {/* Search */}
-      <View className="px-4 pb-4 border-none">
-        <View className="relative">
-          <View className="absolute left-3 top-1/2 -translate-y-1/2">
-            <Ionicons
-              name="search"
-              size={16}
-              style={{ color: "hsl(var(--text-muted))" }}
-            />
-          </View>
-          <Input
-            placeholder="Search your threads..."
-            className="border-none pl-10 rounded-lg bg-transparent text-[hsl(var(--text-primary))]"
-            style={{ fontFamily: 'Ubuntu' }}
-          />
-            <Separator className='my-4' />
-        </View>
-      </View>
+      <View className="px-4 border-none">
+  <View className="re">
+    <View className="flex flex-row items-center gap-2">
+      <Ionicons
+        name="search"
+        size={16}
+        className="text-black dark:text-white"
+        style={{ color: "hsl(var(--text-muted))" }}
+      />
+      <Input
+        placeholder="Search your threads..."
+
+        className="border-none pl-2 rounded-lg bg-transparent text-[hsl(var(--text-primary))]"
+        style={{ fontFamily: 'Ubuntu' }}
+      />
+    </View>
+    <Separator className="my-2" />
+  </View>
+</View>
 
       {/* Chat History */}
       <ScrollView className="flex-1 px-4">
@@ -205,7 +254,7 @@ export function CustomDrawerContent(props: any) {
       </ScrollView>
 
       {/* User Profile */}
-      <View className="p-4 ">
+      <View className="p-4">
         <View className="flex-row items-center gap-3">
           <Avatar
             className="w-8 h-8"

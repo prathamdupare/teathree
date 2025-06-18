@@ -1,4 +1,3 @@
-
 import { View, Text, Pressable } from "react-native"
 import { useUser } from "@clerk/clerk-expo"
 import { Button } from "~/components/ui/button"
@@ -22,15 +21,15 @@ export function EmptyState() {
   const { user } = useUser()
 
   return (
-    <View className="flex-1 items-start justify-center p-8 bg-[#1a171d] dark:bg-[#f8f2f8]">
-      <View className="max-w-md w-full pl-4">
+    <View className="flex-1 items-center justify-center p-8 bg-[#1a171d] dark:bg-[#f8f2f8]">
+      <View className="max-w-md w-full items-center">
         {/* Title */}
-        <Text className="text-2xl font-medium mb-8 text-white dark:text-[#1a171d] text-left">
+        <Text className="text-2xl font-medium mb-8 text-white dark:text-[#1a171d] text-center">
           How can I help you, {user?.firstName}?
         </Text>
 
         {/* Action Buttons */}
-        <View className="flex-row flex-wrap gap-2 mb-8">
+        <View className="flex-row flex-wrap gap-2 mb-8 justify-center">
           {ACTION_BUTTONS.map((button) => (
             <Button
               key={button.label}
@@ -46,13 +45,13 @@ export function EmptyState() {
         </View>
 
         {/* Example Prompts */}
-        <View className="space-y-5">
+        <View className="w-full space-y-5 flex-1 items-center justify-center">
           {EXAMPLE_PROMPTS.map((prompt, index) => (
             <Pressable
               key={index}
-              className="py-2 hover:bg-[#28242e] dark:hover:bg-[#f5dbef] transition-colors rounded-md"
+              className="py-3 px-4 hover:bg-[#28242e] dark:hover:bg-[#f5dbef] transition-colors rounded-md w-full flex items-center justify-center"
             >
-              <Text className="text-[#9ca3af] text-left text-base">{prompt}</Text>
+              <Text className="text-[#9ca3af] text-center text-base">{prompt}</Text>
             </Pressable>
           ))}
         </View>

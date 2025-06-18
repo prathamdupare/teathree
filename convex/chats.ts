@@ -69,3 +69,16 @@ export const updateChatTitle = mutation({
         });
     }
 })
+export const pinChat = mutation({
+    args: {
+        chatId: v.id("chats"),
+    },
+    handler: async (ctx, args) => {
+        const chat = await ctx.db.get(args.chatId);
+        if (!chat) throw new Error("Chat not found");
+        await ctx.db.patch(args.chatId, { 
+            isPinned: !chat.isPinned,
+            updatedAt: Date.now()
+        });
+    }
+})

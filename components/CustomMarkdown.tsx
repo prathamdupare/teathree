@@ -24,9 +24,13 @@ import {
   Del as ExpoDel,
 } from "@expo/html-elements";
 import { cssInterop } from "nativewind";
-import { ScrollView, Image, View, Text, StyleSheet } from "react-native";
+import { ScrollView, Image, View, Text, StyleSheet, Pressable, Platform, useColorScheme } from "react-native";
 import type { MarkdownProps, RenderRules } from "react-native-markdown-display";
-
+import { useState, useEffect } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from 'expo-clipboard';
+import CodeHighlighter from "react-native-code-highlighter";
+import { atomOneDarkReasonable } from "react-syntax-highlighter/dist/esm/styles/hljs";
 const styles = StyleSheet.create({
   baseFont: {
     fontFamily: 'Ubuntu',
@@ -81,6 +85,62 @@ type MarkdownNode = {
   index?: number;
 };
 
+const CodeBlock = ({ children }: { children: React.ReactNode }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [hasCopied, setHasCopied] = useState(false);
+
+  useEffect(() => {
+    if (hasCopied) {
+      const timer = setTimeout(() => setHasCopied(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [hasCopied]);
+
+  const copyToClipboard = async () => {
+    if (typeof children === 'string') {
+      await Clipboard.setStringAsync(children);
+      setHasCopied(true);
+    }
+  };
+
+  return (
+    <View className="relative">
+      <View className="rounded-lg overflow-hidden bg-[#f5dbef]/30 dark:bg-[#1b1219] border border-[#f5dbef]/50 dark:border-[#2b2431]">
+        <Pre className="p-4">
+          <Code className="font-mono text-sm text-[#560f2b] dark:text-[#f5dbef]">
+            {typeof children === 'string' ? children.trim() : ''}
+          </Code>
+        </Pre>
+      </View>
+      <View 
+        className={`absolute top-2 right-2 ${Platform.OS === 'web' ? 'opacity-0 hover:opacity-100' : ''} transition-opacity duration-200`}
+      >
+        <Pressable
+          onPress={copyToClipboard}
+          onHoverIn={() => Platform.OS === 'web' && setIsHovered(true)}
+          onHoverOut={() => Platform.OS === 'web' && setIsHovered(false)}
+          className={`flex-row items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 ${
+            hasCopied
+              ? 'bg-[#b02372] dark:bg-[#d7c2ce]'
+              : isHovered 
+                ? 'bg-[#ecc7e4] dark:bg-[#362d3c]' 
+                : 'bg-[#f5dbef] dark:bg-[#2b2431]'
+          }`}
+        >
+          <Ionicons 
+            name={hasCopied ? "checkmark" : "copy-outline"} 
+            size={18}
+            color={hasCopied 
+              ? (Platform.OS === 'web' ? '#ffffff' : '#2b2431')
+              : (Platform.OS === 'web' ? '#b02372' : '#d7c2ce')
+            }
+          />
+        </Pressable>
+      </View>
+    </View>
+  );
+};
+
 const rules: RenderRules = {
   heading1: (_node: MarkdownNode, children: React.ReactNode) => (
     <H1 key="h1" className="font-semibold text-2xl text-foreground mb-4 tracking-tight">{children}</H1>
@@ -103,19 +163,26 @@ const rules: RenderRules = {
   paragraph: (_node: MarkdownNode, children: React.ReactNode) => (
     <P key={_node.key} className="font-sans text-base text-foreground leading-relaxed mb-4 last:mb-0 tracking-tight">{children}</P>
   ),
-  code_block: (_node: MarkdownNode, children: React.ReactNode) => (
-    <ScrollView key="code-block" horizontal showsHorizontalScrollIndicator={false}>
-      <Pre className="my-4 w-full rounded-lg bg-secondary/20 p-4">
-        <Code className="font-mono text-sm text-foreground">{children}</Code>
-      </Pre>
-    </ScrollView>
-  ),
-  code_inline: (_node: MarkdownNode, children: React.ReactNode) => (
-    <Code key={_node.key} className="font-mono text-sm bg-secondary/20 px-1.5 py-0.5 rounded">{children}</Code>
+  code_block: (node: MarkdownNode, children: React.ReactNode) => {
+    return (
+      <ScrollView key="code-block" horizontal showsHorizontalScrollIndicator={false}>
+        <View className="my-4 w-full">
+          <CodeBlock>{children}</CodeBlock>
+        </View>
+      </ScrollView>
+    );
+  },
+  code_inline: (node: MarkdownNode, children: React.ReactNode) => (
+    <Code 
+      key={node.key} 
+      className="font-mono text-sm bg-[#f5dbef]/30 dark:bg-[#1b1219] text-[#560f2b] dark:text-[#f5dbef] px-1.5 py-0.5 rounded border border-[#f5dbef]/50 dark:border-[#2b2431]"
+    >
+      {children}
+    </Code>
   ),
   list_item: (node: MarkdownNode, children: React.ReactNode) => (
     <View key={`li-${node.index}`} className="flex-row items-start mb-1 last:mb-0 pl-4">
-      <Text className="text-primary mr-2 mt-1">•</Text>
+      <Text className="text-[#b02372] dark:text-[#d7c2ce] mr-2 mt-1">•</Text>
       <View className="flex-1">{children}</View>
     </View>
   ),
@@ -137,7 +204,7 @@ const rules: RenderRules = {
   link: (node: MarkdownNode, children: React.ReactNode) => (
     <A
       key={node.key}
-      className="text-primary underline decoration-primary/30 hover:decoration-primary"
+      className="text-[#b02372] dark:text-[#d7c2ce] underline decoration-[#b02372]/30 dark:decoration-[#d7c2ce]/30 hover:decoration-[#b02372] dark:hover:decoration-[#d7c2ce]"
       target="_blank"
       rel="noreferrer"
       href={node.attributes?.href}
@@ -195,9 +262,114 @@ export interface CustomMarkdownProps {
 }
 
 export function CustomMarkdown({ content }: CustomMarkdownProps) {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
+  const markdownStyles = {
+    body: {
+      fontFamily: 'Ubuntu',
+      color: isDark ? '#E4E4E7' : '#560f2b',  // Light gray for dark mode
+    },
+    code_block: {
+      backgroundColor: isDark ? '#27272A' : 'rgba(245, 219, 239, 0.3)', // Darker background
+      padding: 16,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: isDark ? '#3F3F46' : 'rgba(245, 219, 239, 0.5)', // Subtle border
+      marginVertical: 16,
+    },
+    code_inline: {
+      backgroundColor: isDark ? '#27272A' : 'rgba(245, 219, 239, 0.3)',
+      color: isDark ? '#E4E4E7' : '#560f2b',
+      fontFamily: 'Ubuntu-Medium',
+      padding: 4,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: isDark ? '#3F3F46' : 'rgba(245, 219, 239, 0.5)',
+    },
+    fence: {
+      marginVertical: 16,
+      padding: 16,
+      backgroundColor: isDark ? '#27272A' : 'rgba(245, 219, 239, 0.3)',
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: isDark ? '#3F3F46' : 'rgba(245, 219, 239, 0.5)',
+    },
+    heading1: {
+      fontFamily: 'Ubuntu-Bold',
+      fontSize: 24,
+      marginBottom: 16,
+      color: isDark ? '#FAFAFA' : '#560f2b', // Almost white for headings
+    },
+    heading2: {
+      fontFamily: 'Ubuntu-Bold',
+      fontSize: 20,
+      marginBottom: 12,
+      color: isDark ? '#FAFAFA' : '#560f2b',
+    },
+    heading3: {
+      fontFamily: 'Ubuntu-Bold',
+      fontSize: 18,
+      marginBottom: 12,
+      color: isDark ? '#FAFAFA' : '#560f2b',
+    },
+    heading4: {
+      fontFamily: 'Ubuntu-Bold',
+      fontSize: 16,
+      marginBottom: 8,
+      color: isDark ? '#FAFAFA' : '#560f2b',
+    },
+    heading5: {
+      fontFamily: 'Ubuntu-Bold',
+      fontSize: 14,
+      marginBottom: 8,
+      color: isDark ? '#FAFAFA' : '#560f2b',
+    },
+    heading6: {
+      fontFamily: 'Ubuntu-Bold',
+      fontSize: 14,
+      marginBottom: 8,
+      color: isDark ? '#FAFAFA' : '#560f2b',
+    },
+    paragraph: {
+      marginBottom: 16,
+      lineHeight: 24,
+      color: isDark ? '#E4E4E7' : '#560f2b',
+    },
+    list_item: {
+      marginBottom: 8,
+      color: isDark ? '#E4E4E7' : '#560f2b',
+    },
+    blockquote: {
+      backgroundColor: isDark ? '#18181B' : 'rgba(245, 219, 239, 0.2)', // Darker background
+      borderLeftWidth: 4,
+      borderLeftColor: isDark ? '#A1A1AA' : '#b02372', // Subtle accent
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      marginVertical: 16,
+    },
+    link: {
+      color: isDark ? '#D4D4D8' : '#b02372',
+      textDecorationLine: 'underline' as const,
+    },
+    list_item_bullet: {
+      color: isDark ? '#A1A1AA' : '#b02372',
+    },
+    hr: {
+      backgroundColor: isDark ? '#3F3F46' : 'rgba(245, 219, 239, 0.5)',
+      height: 1,
+      marginVertical: 16,
+    }
+  };
+
   return (
     <View className="w-full">
-      <Markdown rules={rules}>{content}</Markdown>
+      <Markdown 
+        style={markdownStyles}
+        rules={rules}
+      >
+        {content}
+      </Markdown>
     </View>
   );
 }
