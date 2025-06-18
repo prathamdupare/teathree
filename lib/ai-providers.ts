@@ -46,15 +46,6 @@ export const AI_PROVIDERS: Record<string, AIProvider> = {
     ],
     requiresApiKey: 'OPENAI_API_KEY'
   },
-  xai: {
-    name: 'XAI',
-    models: [
-      { id: 'grok2', name: 'XAI 001', isDefault: true },
-      { id: 'grok-3', name: 'Grok 3' },
-      { id: 'grok-3-mini', name: 'Grok 3 Mini' }
-    ],
-    requiresApiKey: 'XAI_API_KEY'
-  },
   anthropic: {
     name: 'Anthropic',
     models: [
@@ -86,24 +77,6 @@ export const AI_PROVIDERS: Record<string, AIProvider> = {
     ],
     requiresApiKey: 'DEEPSEEK_API_KEY'
   },
-  qwen: {
-    name: 'Qwen',
-    models: [
-      { id: 'qwen-qwq-32b', name: 'Qwen qwq-32b', isDefault: true, supportsReasoning: true, reasoningType: 'thinking' },
-      { id: 'qwen-2.5-32b', name: 'Qwen 2.5 32b' }
-    ],
-    requiresApiKey: 'QWEN_API_KEY'
-  },
-  openrouter: {
-    name: 'OpenRouter',
-    models: [
-      { id: 'o3-mini', name: 'o3-mini', isDefault: true, supportsReasoning: true, reasoningType: 'native' },
-      { id: 'o4-mini', name: 'o4-mini', supportsReasoning: true, reasoningType: 'native' },
-      { id: 'o3', name: 'o3', supportsReasoning: true, reasoningType: 'native' },
-      { id: 'o3-pro', name: 'o3 Pro', supportsReasoning: true, reasoningType: 'native' }
-    ],
-    requiresApiKey: 'OPENROUTER_API_KEY'
-  }
 };
 
 // Helper function to get reasoning configuration for a model

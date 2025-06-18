@@ -4,19 +4,20 @@ import { Theme, ThemeProvider, DefaultTheme, DarkTheme } from '@react-navigation
 import { Drawer } from 'expo-router/drawer';
 import { StatusBar } from 'expo-status-bar';
 import * as React from 'react';
-import { Platform, Pressable } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NAV_THEME } from '~/lib/constants';
 import { useColorScheme } from '~/lib/useColorScheme';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
 import { Text } from '~/components/ui/text';
-import { ClerkProvider, ClerkLoaded } from '@clerk/clerk-expo'
+import { ClerkProvider, ClerkLoaded, SignedIn, SignedOut } from '@clerk/clerk-expo'
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { tokenCache } from '@clerk/clerk-expo/token-cache'
 import { CustomDrawerContent } from '~/components/CustomDrawerContent';
 import { PortalHost } from '@rn-primitives/portal';
 import { useAppFonts } from '~/lib/fonts';
 import { QuickSelector } from '~/components/ui/quick-selector';
+import { Slot } from 'expo-router';
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -101,51 +102,58 @@ export default function RootLayout() {
           <ConvexProvider client={convex}>
             <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
               <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
-              <QuickSelector />
-              <Drawer
-                drawerContent={(props) => <CustomDrawerContent {...props} />}
-                screenOptions={{
-                  headerShown: false,
-                  drawerType: Platform.OS === 'web' ? 'permanent' : 'slide',
-                  drawerStyle: {
-                    width: 250,
-                    backgroundColor: isDarkColorScheme ? NAV_THEME.dark.card : NAV_THEME.light.card,
-                  },
-                  overlayColor: Platform.OS === 'web' ? 'transparent' : undefined,
-                  swipeEnabled: Platform.OS !== 'web',
-                  drawerActiveTintColor: isDarkColorScheme ? NAV_THEME.dark.primary : NAV_THEME.light.primary,
-                  drawerInactiveTintColor: isDarkColorScheme ? NAV_THEME.dark.text : NAV_THEME.light.text,
-                  drawerLabelStyle: {
-                    fontFamily: 'Ubuntu',
-                  }
-                }}
-                initialRouteName="index"
-              >
-                <Drawer.Screen
-                  name="index"
-                  options={{
+              <SignedIn>
+                <QuickSelector />
+                <Drawer
+                  drawerContent={(props) => <CustomDrawerContent {...props} />}
+                  screenOptions={{
                     headerShown: false,
-                    drawerItemStyle: { display: 'none' },
+                    drawerType: Platform.OS === 'web' ? 'permanent' : 'slide',
+                    drawerStyle: {
+                      width: 250,
+                      backgroundColor: isDarkColorScheme ? NAV_THEME.dark.card : NAV_THEME.light.card,
+                    },
+                    overlayColor: Platform.OS === 'web' ? 'transparent' : undefined,
+                    swipeEnabled: Platform.OS !== 'web',
+                    drawerActiveTintColor: isDarkColorScheme ? NAV_THEME.dark.primary : NAV_THEME.light.primary,
+                    drawerInactiveTintColor: isDarkColorScheme ? NAV_THEME.dark.text : NAV_THEME.light.text,
+                    drawerLabelStyle: {
+                      fontFamily: 'Ubuntu',
+                    }
                   }}
-                />
-                <Drawer.Screen
-                  name="ask/index"
-                  options={{
-                    drawerLabel: 'Ask',
-                    title: 'Ask Question',
-                    drawerItemStyle: Platform.OS === 'web' ? { 
-                      marginVertical: 4,
-                    } : undefined,
-                  }}
-                />
-                <Drawer.Screen
-                  name="chat/[id]"
-                  options={{
-                    headerShown: false,
-                    drawerItemStyle: { display: 'none' },
-                  }}
-                />
-              </Drawer>
+                  initialRouteName="index"
+                >
+                  <Drawer.Screen
+                    name="index"
+                    options={{
+                      headerShown: false,
+                      drawerItemStyle: { display: 'none' },
+                    }}
+                  />
+                  <Drawer.Screen
+                    name="ask/index"
+                    options={{
+                      drawerLabel: 'Ask',
+                      title: 'Ask Question',
+                      drawerItemStyle: Platform.OS === 'web' ? { 
+                        marginVertical: 4,
+                      } : undefined,
+                    }}
+                  />
+                  <Drawer.Screen
+                    name="chat/[id]"
+                    options={{
+                      headerShown: false,
+                      drawerItemStyle: { display: 'none' },
+                    }}
+                  />
+                </Drawer>
+              </SignedIn>
+              <SignedOut>
+                <View style={{ flex: 1 }}>
+                  <Slot />
+                </View>
+              </SignedOut>
               <PortalHost />
             </ThemeProvider>
           </ConvexProvider>

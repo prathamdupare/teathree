@@ -31,14 +31,24 @@ function ChatItem({
 }) {
   const [isItemHovered, setIsItemHovered] = useState(false);
   const [isPinHovered, setIsPinHovered] = useState(false);
+  const [isDeleteHovered, setIsDeleteHovered] = useState(false);
   const pinChat = useMutation(api.chats.pinChat);
+  const deleteChat = useMutation(api.chats.deleteChat);
 
   const handlePin = async (e: any) => {
     e.stopPropagation();
     await pinChat({ chatId: id });
   };
 
-  const showPin = isItemHovered || isPinHovered || isPinned;
+  const handleDelete = async (e: any) => {
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this chat?')) {
+      await deleteChat({ chatId: id });
+      router.push('/');
+    }
+  };
+
+  const showActions = isItemHovered || isPinHovered || isDeleteHovered || isPinned;
 
   return (
     <Pressable
@@ -61,28 +71,48 @@ function ChatItem({
       >
         {title}
       </Text>
-      <Pressable
-        onPress={handlePin}
-        onHoverIn={() => setIsPinHovered(true)}
-        onHoverOut={() => setIsPinHovered(false)}
-        className={`w-6 h-6 items-center justify-center rounded-full transition-all duration-200 ${
-          showPin ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-        } ${
-          isPinHovered 
-            ? 'bg-[#ecc7e4] dark:bg-[#362d3c]' 
-            : 'hover:bg-[#ecc7e4] dark:hover:bg-[#362d3c]'
-        }`}
-      >
-        <AntDesign 
-          name={isPinned ? "pushpin" : "pushpino"}
-          size={14}
-          className={`transition-colors ${
-            isPinned 
-              ? 'text-[#560f2b] dark:text-[#d7c2ce]' 
-              : 'text-[#b02372] dark:text-[#d7c2ce]'
+      <View className="flex-row gap-1">
+        <Pressable
+          onPress={handlePin}
+          onHoverIn={() => setIsPinHovered(true)}
+          onHoverOut={() => setIsPinHovered(false)}
+          className={`w-6 h-6 items-center justify-center rounded-full transition-all duration-200 ${
+            showActions ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+          } ${
+            isPinHovered 
+              ? 'bg-[#ecc7e4] dark:bg-[#362d3c]' 
+              : 'hover:bg-[#ecc7e4] dark:hover:bg-[#362d3c]'
           }`}
-        />
-      </Pressable>
+        >
+          <AntDesign 
+            name={isPinned ? "pushpin" : "pushpino"}
+            size={14}
+            className={`transition-colors ${
+              isPinned 
+                ? 'text-[#560f2b] dark:text-[#d7c2ce]' 
+                : 'text-[#b02372] dark:text-[#d7c2ce]'
+            }`}
+          />
+        </Pressable>
+        <Pressable
+          onPress={handleDelete}
+          onHoverIn={() => setIsDeleteHovered(true)}
+          onHoverOut={() => setIsDeleteHovered(false)}
+          className={`w-6 h-6 items-center justify-center rounded-full transition-all duration-200 ${
+            showActions ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+          } ${
+            isDeleteHovered 
+              ? 'bg-[#ecc7e4] dark:bg-[#362d3c]' 
+              : 'hover:bg-[#ecc7e4] dark:hover:bg-[#362d3c]'
+          }`}
+        >
+          <AntDesign 
+            name="delete"
+            size={14}
+            className="text-[#b02372] dark:text-[#d7c2ce]"
+          />
+        </Pressable>
+      </View>
     </Pressable>
   );
 }

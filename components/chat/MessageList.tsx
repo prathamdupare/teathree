@@ -155,7 +155,7 @@ const MessageItem = memo(({ message }: { message: ExtendedMessage }) => {
             onPress={copyToClipboard}
             onHoverIn={() => Platform.OS === 'web' && setIsCopyHovered(true)}
             onHoverOut={() => Platform.OS === 'web' && setIsCopyHovered(false)}
-            className={`flex-row items-center justify-center w-6 h-6 rounded-full transition-all duration-200 ${
+            className={`flex-row items-center justify-center w-6 h-6 rounded-md transition-all duration-200 ${
               hasCopied
                 ? 'bg-[#b02372] dark:bg-[#d7c2ce]'
                 : isCopyHovered 

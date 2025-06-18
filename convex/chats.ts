@@ -82,3 +82,23 @@ export const pinChat = mutation({
         });
     }
 })
+
+export const deleteChat = mutation({
+    args: {
+        chatId: v.id("chats"),
+    },
+    handler: async (ctx, args) => {
+        // Delete all messages in the chat
+        const messages = await ctx.db
+            .query("messages")
+            .withIndex("by_chat", q => q.eq("chatId", args.chatId))
+            .collect();
+        
+        for (const message of messages) {
+            await ctx.db.delete(message._id);
+        }
+
+        // Delete the chat itself
+        await ctx.db.delete(args.chatId);
+    }
+});

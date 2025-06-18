@@ -13,6 +13,7 @@ import { Text } from '~/components/ui/text';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
 import { Progress } from '~/components/ui/progress';
+import { SignOutButton } from '~/components/SignOutButton';
 
 export default function SettingsScreen() {
   const [activeTab, setActiveTab] = useState('account');
@@ -153,9 +154,12 @@ export default function SettingsScreen() {
       <View className="border-t border-gray-800 pt-8">
         <Text className="text-2xl font-semibold text-white mb-4">Danger Zone</Text>
         <Text className="text-gray-400 mb-4">Permanently delete your account and all associated data.</Text>
-        <Button className="bg-red-600">
-          <Text className="text-white font-medium">Delete Account</Text>
-        </Button>
+        <View className="space-y-4">
+          <Button className="bg-red-600 w-full">
+            <Text className="text-white font-medium">Delete Account</Text>
+          </Button>
+          <SignOutButton />
+        </View>
       </View>
     </ScrollView>
   );

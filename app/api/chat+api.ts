@@ -1,6 +1,7 @@
 import { google } from "@ai-sdk/google"
 import { openai } from "@ai-sdk/openai"
 import { anthropic } from "@ai-sdk/anthropic"
+import { deepseek } from "@ai-sdk/deepseek"
 import { xai } from "@ai-sdk/xai"
 import { streamText } from 'ai';
 import { AI_PROVIDERS } from "~/lib/ai-providers";

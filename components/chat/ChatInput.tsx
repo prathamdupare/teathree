@@ -54,7 +54,7 @@ const ChatInputComponent = ({
       {/* Outer container with rounded top corners and border */}
       <View className="border border-[#fadcfd] dark:border-[#3a242f] rounded-t-2xl mx-4 shadow-sm">
         {/* Inner container with subtle border */}
-        <View className="border border-[hsl(var(--input-border))] rounded-t-2xl m-1 bg-[#fcf3fc] dark:bg-[#2a242f]">
+        <View className="border border-[hsl(var(--input-border))] rounded-t-2xl m-1 mb-0 bg-[#fcf3fc] dark:bg-[#2a242f]">
           <View className="py-1">
             <View className="relative">
               <TextInput

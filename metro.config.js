@@ -8,9 +8,18 @@ const config = getDefaultConfig(__dirname, {
   isCSSEnabled: true,
 });
 
-// Add alias resolver for ~ 
-config.resolver.alias = {
-  '~': path.resolve(__dirname, '.'),
+// Add SVG support
+config.transformer = {
+  ...config.transformer,
+  babelTransformerPath: require.resolve("react-native-svg-transformer/expo")
+};
+config.resolver = {
+  ...config.resolver,
+  assetExts: config.resolver.assetExts.filter((ext) => ext !== "svg"),
+  sourceExts: [...config.resolver.sourceExts, "svg"],
+  alias: {
+    '~': path.resolve(__dirname, '.'),
+  }
 };
 
 module.exports = withNativeWind(config, { input: './app/globals.css' })

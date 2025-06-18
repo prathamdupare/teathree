@@ -12,6 +12,8 @@ import type { PropsWithChildren } from 'react';
 import { ChatInput } from './ChatInput';
 import { AI_PROVIDERS } from "~/lib/ai-providers";
 import type { Message } from "~/types";
+import { StreamingMessageManager } from "~/lib/streamingMessageManager";
+import { StreamingSimulator } from "~/lib/streamingSimulator";
 
 interface ChatContainerProps {
   chatId: Id<"chats"> | null;
@@ -29,19 +31,30 @@ interface MessageMetadata {
 
 interface UIMessage {
   _id: Id<"messages"> | string;
+  _creationTime: number;
   role: 'user' | 'assistant' | 'system';
   content: string;
   isComplete?: boolean;
   createdAt: number;
   updatedAt: number;
+  chatId: Id<"chats">;
   provider?: string;
   model?: string;
-  metadata?: MessageMetadata;
+  metadata?: {
+    tokenCount?: number;
+    processingTime?: number;
+    finishReason?: string;
+    reasoning?: string;
+    reasoningTokens?: number;
+  };
 }
 
-interface StreamMessage extends UIMessage {
-  metadata?: MessageMetadata & {
+interface StreamMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  metadata?: {
     reasoning?: string;
+    [key: string]: any;
   };
 }
 
@@ -54,7 +67,9 @@ export function ChatContainer({
   const { user } = useUser();
   const [localMessages, setLocalMessages] = useState<UIMessage[]>([]);
   const [currentAiMessageId, setCurrentAiMessageId] = useState<Id<"messages"> | null>(null);
-  const lastUpdateRef = useRef<string>('');
+  const streamingContentRef = useRef<string>('');
+  const tempMessageIdRef = useRef<string | null>(null);
+  const streamingSimulatorRef = useRef<StreamingSimulator | null>(null);
   const createStreamingMessage = useMutation(api.messages.createStreamingMessage);
   const updateMessageContent = useMutation(api.messages.updateMessageContent);
   const createChat = useMutation(api.chats.createChat);
@@ -64,6 +79,53 @@ export function ChatContainer({
   const chat = useQuery(api.chats.getChat, 
     chatId ? { chatId } : 'skip'
   );
+
+  const streamManagerRef = useRef<StreamingMessageManager | null>(null);
+
+  useEffect(() => {
+    // Initialize StreamingMessageManager
+    streamManagerRef.current = new StreamingMessageManager(async (opts) => {
+      await updateMessageContent({
+        messageId: opts.messageId,
+        content: opts.content,
+        isComplete: opts.isComplete,
+        metadata: opts.metadata
+      });
+    });
+
+    return () => {
+      if (streamManagerRef.current) {
+        streamManagerRef.current.reset();
+      }
+    };
+  }, [updateMessageContent]);
+
+  // Initialize StreamingSimulator
+  useEffect(() => {
+    streamingSimulatorRef.current = new StreamingSimulator({
+      onUpdate: (content) => {
+        if (tempMessageIdRef.current) {
+          setLocalMessages(prev => 
+            prev.map(msg => 
+              msg._id === tempMessageIdRef.current
+                ? { ...msg, content }
+                : msg
+            )
+          );
+        }
+      },
+      minDelay: 2,
+      maxDelay: 8,
+      adaptiveSpeed: true,
+      wordByWord: false
+    });
+
+    return () => {
+      if (streamingSimulatorRef.current) {
+        streamingSimulatorRef.current.stop();
+      }
+    };
+  }, []);
 
   const [selectedProvider, setSelectedProvider] = useState(
     chat?.currentProvider || 'google'
@@ -127,6 +189,9 @@ export function ChatContainer({
           )
         );
         setCurrentAiMessageId(null);
+        if (streamManagerRef.current) {
+          streamManagerRef.current.reset();
+        }
       }
     },
   });
@@ -138,17 +203,90 @@ export function ChatContainer({
     }
 
     setLocalMessages(prev => {
-      if (isStreamingLoading && currentAiMessageId) {
-        const optimisticAiMessage = prev.find(msg => msg.role === 'assistant' && !msg.isComplete);
-        if (optimisticAiMessage) {
+      // If we have a temporary message ID and are streaming
+      if (isStreamingLoading && currentAiMessageId && tempMessageIdRef.current) {
+        // Keep the streaming message as is, update others from Convex
           return convexMessages.map(msg => 
-            msg._id === currentAiMessageId ? optimisticAiMessage : msg
+          msg._id === currentAiMessageId 
+            ? prev.find(p => p._id === tempMessageIdRef.current) || msg
+            : msg
           );
-        }
       }
       return convexMessages;
     });
   }, [convexMessages, isStreamingLoading, currentAiMessageId]);
+
+  useEffect(() => {
+    const updateStreamingMessage = async () => {
+      if (!currentAiMessageId || !streamingMessages.length || !tempMessageIdRef.current) return;
+
+      const lastMessage = streamingMessages[streamingMessages.length - 1] as unknown as StreamMessage;
+      if (lastMessage?.role === 'assistant' && lastMessage.content) {
+        // Extract reasoning from content based on provider and model
+        const providerConfig = AI_PROVIDERS[selectedProvider as keyof typeof AI_PROVIDERS];
+        const modelConfig = providerConfig?.models.find(m => m.id === selectedModel);
+        
+        let reasoning: string | undefined;
+        let content = lastMessage.content;
+
+        if (modelConfig?.supportsReasoning) {
+          switch (modelConfig.reasoningType) {
+            case 'thinking': {
+              const match = content.match(/<think>(.*?)<\/think>/s);
+              if (match) {
+                reasoning = match[1].trim();
+                content = content.replace(/<think>.*?<\/think>/s, '').trim();
+              }
+              break;
+            }
+            case 'reasoning': {
+              const match = content.match(/<reason>(.*?)<\/reason>/s);
+              if (match) {
+                reasoning = match[1].trim();
+                content = content.replace(/<reason>.*?<\/reason>/s, '').trim();
+              }
+              break;
+            }
+            case 'native': {
+              reasoning = lastMessage.metadata?.reasoning;
+              break;
+            }
+          }
+        }
+
+        // Only update through StreamingSimulator for smooth letter-by-letter display
+        if (streamingSimulatorRef.current) {
+          streamingSimulatorRef.current.updateContent(content);
+        }
+
+        // Update Convex in background
+        if (streamManagerRef.current) {
+          await streamManagerRef.current.updateMessage({
+            messageId: currentAiMessageId,
+            content,
+            isComplete: !isStreamingLoading,
+            metadata: {
+              ...(reasoning && { reasoning }),
+              ...(lastMessage.metadata || {})
+            }
+          });
+        }
+        
+        if (!isStreamingLoading) {
+          setCurrentAiMessageId(null);
+          tempMessageIdRef.current = null;
+          if (streamManagerRef.current) {
+            streamManagerRef.current.reset();
+          }
+          if (streamingSimulatorRef.current) {
+            streamingSimulatorRef.current.stop();
+          }
+        }
+      }
+    };
+
+    updateStreamingMessage();
+  }, [streamingMessages, isStreamingLoading, currentAiMessageId, selectedProvider, selectedModel]);
 
   const handleSubmit = async () => {
     if (!streamingInput.trim() || !user?.id || isStreamingLoading) {
@@ -161,23 +299,34 @@ export function ChatContainer({
     }
 
     const timestamp = Date.now();
+    const tempId = `temp-${timestamp}-${Math.random().toString(36).slice(2)}`;
+    tempMessageIdRef.current = tempId;
+    
+    // Reset streaming simulator
+    if (streamingSimulatorRef.current) {
+      streamingSimulatorRef.current.stop();
+    }
     
     const optimisticUserMessage: UIMessage = {
       _id: `temp-user-${timestamp}`,
+      _creationTime: timestamp,
       role: 'user',
       content: streamingInput,
       createdAt: timestamp,
       updatedAt: timestamp,
-      isComplete: true
+      isComplete: true,
+      chatId: chatId as Id<"chats">
     };
 
     const optimisticAiMessage: UIMessage = {
-      _id: `temp-ai-${timestamp}`,
+      _id: tempId,
+      _creationTime: timestamp,
       role: 'assistant',
       content: '...',
       createdAt: timestamp,
       updatedAt: timestamp,
-      isComplete: false
+      isComplete: false,
+      chatId: chatId as Id<"chats">
     };
 
     setLocalMessages(prev => [...prev, optimisticUserMessage, optimisticAiMessage]);
@@ -251,7 +400,7 @@ export function ChatContainer({
         content: streamingInput,
         isComplete: true,
         createdAt: timestamp,
-        updatedAt: timestamp,
+        updatedAt: timestamp
       });
 
       console.log('[Chat] Creating AI message placeholder');
@@ -267,6 +416,9 @@ export function ChatContainer({
       });
 
       setCurrentAiMessageId(aiMessageId);
+      if (streamManagerRef.current) {
+        streamManagerRef.current.reset();
+      }
 
       console.log('[Chat] Starting stream');
       await handleStreamingSubmit({} as any);
@@ -279,91 +431,15 @@ export function ChatContainer({
       });
       
       setLocalMessages(convexMessages || []);
-    }
-  };
-
-  useEffect(() => {
-    const updateStreamingMessage = async () => {
-      if (!currentAiMessageId || !streamingMessages.length) return;
-
-      const lastMessage = streamingMessages[streamingMessages.length - 1] as unknown as StreamMessage;
-      if (lastMessage?.role === 'assistant' && lastMessage.content) {
-        // Extract reasoning from content based on provider and model
-        const providerConfig = AI_PROVIDERS[selectedProvider as keyof typeof AI_PROVIDERS];
-        const modelConfig = providerConfig?.models.find(m => m.id === selectedModel);
-        
-        let reasoning: string | undefined;
-        let content = lastMessage.content;
-
-        if (modelConfig?.supportsReasoning) {
-          switch (modelConfig.reasoningType) {
-            case 'thinking': {
-              const match = content.match(/<think>(.*?)<\/think>/s);
-              if (match) {
-                reasoning = match[1].trim();
-                content = content.replace(/<think>.*?<\/think>/s, '').trim();
-              }
-              break;
-            }
-            case 'reasoning': {
-              const match = content.match(/<reason>(.*?)<\/reason>/s);
-              if (match) {
-                reasoning = match[1].trim();
-                content = content.replace(/<reason>.*?<\/reason>/s, '').trim();
-              }
-              break;
-            }
-            case 'native': {
-              // For native reasoning models (like OpenAI's o-series)
-              // The reasoning is already in the metadata
-              reasoning = lastMessage.metadata?.reasoning;
-              break;
-            }
-          }
-        }
-
-        setLocalMessages(prev => 
-          prev.map(msg => 
-            msg._id === currentAiMessageId 
-              ? { 
-                  ...msg, 
-                  content, 
-                  isComplete: !isStreamingLoading,
-                  metadata: {
-                    ...msg.metadata,
-                    ...(reasoning && { reasoning }),
-                    ...(lastMessage.metadata || {})
-                  }
-                }
-              : msg
-          )
-        );
-
-        if (lastMessage.content !== lastUpdateRef.current) {
-          await updateMessageContent({
-            messageId: currentAiMessageId,
-            content,
-            isComplete: !isStreamingLoading,
-            metadata: {
-              ...(reasoning && { reasoning }),
-              ...(lastMessage.metadata || {})
-            }
-          });
-          lastUpdateRef.current = lastMessage.content;
-        }
-        
-        if (!isStreamingLoading) {
-          setCurrentAiMessageId(null);
-          lastUpdateRef.current = '';
+      tempMessageIdRef.current = null;
+      if (streamManagerRef.current) {
+        streamManagerRef.current.reset();
         }
       }
     };
 
-    updateStreamingMessage();
-  }, [streamingMessages, isStreamingLoading, currentAiMessageId, selectedProvider, selectedModel]);
-
   return (
-    <View className="flex-1 flex flex-col bg-[#f8f2f8] dark:bg-[#221d27] border-t-[10px] border-[#f5dbef] dark:border-[#181217] rounded-t-lg">
+    <View className="flex-1 flex flex-col pt-10 bg-[#f8f2f8] dark:bg-[#221d27] border-t-[10px] border-[#f5dbef] dark:border-[#181217] rounded-t-lg">
       <View className="max-w-4xl mx-auto w-full flex-1">
         {children}
         <View className="flex-1">
@@ -380,6 +456,7 @@ export function ChatContainer({
           selectedProvider={selectedProvider}
           selectedModel={selectedModel}
           onModelSelect={handleProviderModelChange}
+          isLoading={isStreamingLoading}
         />
       </View>
     </View>
