@@ -216,7 +216,7 @@ export function ModelSelector({ selectedProvider, selectedModel, onModelSelect }
     )
 
     return (
-      <View className="w-[650px] bg-[#fcf3fc] dark:bg-[#100a0e] rounded-lg overflow-hidden">
+      <View className="w-[650px] border-none bg-[#fcf3fc] dark:bg-[#100a0e] rounded-lg overflow-hidden">
         <View className="px-4 py-4 border-b border-[#fadcfd] dark:border-[#2a2a2a]">
           <View className="flex-row items-center justify-between mb-3">
             <Pressable onPress={() => setShowExpanded(false)} className="flex-row items-center gap-2">
@@ -309,7 +309,7 @@ export function ModelSelector({ selectedProvider, selectedModel, onModelSelect }
       >
         <DropdownMenuTrigger asChild>
           <Button
-            variant="outline"
+            
             className="bg-[#f8f2f8] dark:bg-[#2b2431] border-[#fadcfd] dark:border-[#333333] hover:bg-[#f5ebf5] dark:hover:bg-[#2a242f] flex-row items-center gap-2 px-3 py-2 rounded-lg"
           >
             {renderProviderLogo(selectedProvider, 18)}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { View, ScrollView, Pressable, useColorScheme } from "react-native";
 import { useUser} from "@clerk/clerk-expo";
 import { router, usePathname } from "expo-router";
@@ -131,8 +131,8 @@ function ChatSection({
   if (!chats?.length) return null;
 
   return (
-    <View className="mb-6">
-      <View className="flex-row items-center gap-2 mb-3">
+    <View className="mb-3">
+      <View className="flex-row items-center gap-2 mb-1">
         {icon && (
           <Ionicons
             name={icon as any}
@@ -145,7 +145,7 @@ function ChatSection({
           {title}
         </Text>
       </View>
-      <View className="space-y-1">
+      <View className="space-y-0.5">
         {chats.map((chat) => (
           <ChatItem
             key={chat._id}
@@ -167,6 +167,7 @@ export function CustomDrawerContent(props: any) {
   const { user } = useUser();
   const userImage = user?.imageUrl;
   const colorScheme = useColorScheme();
+  const [searchQuery, setSearchQuery] = useState('');
   const chats = useQuery(
     api.chats.getUserChats,
     user?.id ? { userId: user.id } : "skip",
@@ -178,14 +179,21 @@ export function CustomDrawerContent(props: any) {
 
   console.log("clerk user", user?.imageUrl);
 
-  // Organize chats by date
-  const organizedChats = React.useMemo(() => {
+  // Organize chats by date and filter based on search
+  const organizedChats = useMemo(() => {
     if (!chats) return { pinned: [], today: [], yesterday: [], older: [] };
 
     const todayStart = new Date().setHours(0, 0, 0, 0);
     const yesterdayStart = todayStart - 24 * 60 * 60 * 1000;
 
-    return chats.reduce(
+    // Filter chats based on search query
+    const filteredChats = searchQuery
+      ? chats.filter(chat => 
+          chat.title?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : chats;
+
+    return filteredChats.reduce(
       (acc: any, chat) => {
         if (chat.isPinned) {
           acc.pinned.push(chat);
@@ -206,7 +214,7 @@ export function CustomDrawerContent(props: any) {
       },
       { pinned: [], today: [], yesterday: [], older: [] },
     );
-  }, [chats]);
+  }, [chats, searchQuery]);
 
   return (
     <View className="w-64 flex-1">
@@ -237,24 +245,25 @@ export function CustomDrawerContent(props: any) {
 
       {/* Search */}
       <View className="px-4 border-none">
-  <View className="re">
-    <View className="flex flex-row items-center gap-2">
-      <Ionicons
-        name="search"
-        size={16}
-        className="text-black dark:text-white"
-        style={{ color: "hsl(var(--text-muted))" }}
-      />
-      <Input
-        placeholder="Search your threads..."
-
-        className="border-none pl-2 rounded-lg bg-transparent text-[hsl(var(--text-primary))]"
-        style={{ fontFamily: 'Ubuntu' }}
-      />
-    </View>
-    <Separator className="my-2" />
-  </View>
-</View>
+        <View className="re">
+          <View className="flex flex-row items-center gap-2">
+            <Ionicons
+              name="search"
+              size={16}
+              className="text-black dark:text-white"
+              style={{ color: "hsl(var(--text-muted))" }}
+            />
+            <Input
+              placeholder="Search your threads..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              className="border-none pl-2 rounded-lg bg-transparent text-[hsl(var(--text-primary))]"
+              style={{ fontFamily: 'Ubuntu' }}
+            />
+          </View>
+          <Separator className="my-2" />
+        </View>
+      </View>
 
       {/* Chat History */}
       <ScrollView className="flex-1 px-4">

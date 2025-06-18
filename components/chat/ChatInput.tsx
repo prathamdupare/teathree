@@ -89,19 +89,6 @@ const ChatInputComponent = ({
                 selectedModel={selectedModel}
                 onModelSelect={onModelSelect}
               />
-              <Button
-                variant="ghost"
-                className="flex-row items-center gap-1 px-2 py-1 rounded-lg bg-transparent"
-                onPress={() => {}}
-              >
-                <Ionicons name="attach" size={12} color={iconColor} />
-                <Text
-                  className="text-xs"
-                  style={{ color: iconColor }}
-                >
-                  Attach
-                </Text>
-              </Button>
               <Pressable
                 className="absolute right-1 top-1/2 transform -translate-y-1/2 rounded-lg w-10 h-10 items-center justify-center bg-[#cd98b2] dark:bg-[#3a2033]"
                 onPress={() => handleSubmit()}

@@ -86,7 +86,7 @@ const MessageItem = memo(({ message }: { message: ExtendedMessage }) => {
 
   return (
     <Pressable 
-      className="mb-4 last:mb-0"
+      className="mb-1 last:mb-0"
       onHoverIn={() => Platform.OS === 'web' && setIsMessageHovered(true)}
       onHoverOut={() => Platform.OS === 'web' && setIsMessageHovered(false)}
     >
@@ -95,7 +95,7 @@ const MessageItem = memo(({ message }: { message: ExtendedMessage }) => {
         style={{ opacity: isOptimistic ? 0.7 : 1 }}
       >
         <View 
-          className={`max-w-[85%] rounded-2xl m-0 px-4 py-3 ${
+          className={`max-w-[85%] rounded-2xl m-0 px-3 py-0 ${
             isAI 
               ? 'rounded bg-transparent' 
               : 'rounded bg-[#f5dbef] dark:bg-[#2b2431]'
@@ -121,7 +121,7 @@ const MessageItem = memo(({ message }: { message: ExtendedMessage }) => {
       
       {!isLoading && (
         <View 
-          className={`flex-row items-center gap-2 mt-1 px-4 transition-opacity duration-200 ${
+          className={`flex-row items-center gap-2 mt-0.5 px-4 transition-opacity duration-200 ${
             isControlsVisible ? 'opacity-100' : 'opacity-0'
           } ${isAI ? 'justify-start' : 'justify-end'}`}
         >
@@ -198,8 +198,8 @@ export function MessageList({ messages, contentContainerStyle }: MessageListProp
       className="flex-1 px-6 bg-[#f8f2f8] dark:bg-[#221d27]"
       contentContainerStyle={[
         { 
-          paddingVertical: 20,
-          paddingBottom: 180 
+          paddingVertical: 16,
+          paddingBottom: 160 
         }, 
         contentContainerStyle
       ]}
