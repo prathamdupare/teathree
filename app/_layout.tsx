@@ -18,6 +18,7 @@ import { PortalHost } from '@rn-primitives/portal';
 import { useAppFonts } from '~/lib/fonts';
 import { QuickSelector } from '~/components/ui/quick-selector';
 import { Slot } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -33,28 +34,71 @@ function DrawerToggleButton() {
   const navigation = useNavigation();
   const { isDarkColorScheme } = useColorScheme();
   
-  if (Platform.OS !== 'web') return null;
-  
   return (
     <Pressable
       onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
-      style={{ 
-        padding: 8, 
-        marginLeft: 8,
-        borderRadius: 4,
-      }}
+      className="p-2 ml-2 rounded-md hover:bg-[#f5dbef] dark:hover:bg-[#2b2431] transition-colors"
     >
-      <Text style={{ 
-        fontSize: 18, 
-      
-        color: isDarkColorScheme ? NAV_THEME.dark.text : NAV_THEME.light.text 
-      }}>
-        ☰
-      </Text>
+      <Ionicons 
+        name="menu" 
+        size={24} 
+        color={isDarkColorScheme ? NAV_THEME.dark.text : NAV_THEME.light.text} 
+      />
     </Pressable>
   );
 }
 
+// Web-specific persistent sidebar layout
+function WebLayout() {
+  const { isDarkColorScheme } = useColorScheme();
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+  
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  
+  return (
+    <SidebarContext.Provider value={{ isSidebarOpen, toggleSidebar }}>
+      <View className="flex-1 flex-row relative">
+        {/* Collapsible sidebar for web */}
+        <View 
+          className="border-r border-[#f0d7f0]/50 dark:border-[#2a1f24] transition-all duration-300 ease-in-out"
+          style={{ 
+            width: isSidebarOpen ? 280 : 0,
+            overflow: 'hidden'
+          }}
+        >
+          {isSidebarOpen && <CustomDrawerContent toggleSidebar={toggleSidebar} />}
+        </View>
+        
+        {/* Toggle button when sidebar is closed */}
+        {!isSidebarOpen && (
+          <Pressable
+            onPress={toggleSidebar}
+            className="absolute top-4 left-4 z-50 w-10 h-10 rounded-full items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all duration-200"
+            style={{
+              backgroundColor: isDarkColorScheme ? '#2b2431' : '#f5dbef',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
+            }}
+          >
+            <Ionicons 
+              name="menu" 
+              size={18} 
+              color={isDarkColorScheme ? '#d7c2ce' : '#b02372'} 
+            />
+          </Pressable>
+        )}
+        
+        {/* Main content area */}
+        <View className="flex-1">
+          <Slot />
+        </View>
+      </View>
+    </SidebarContext.Provider>
+  );
+}
 
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
   unsavedChangesWarning: false,
@@ -73,11 +117,39 @@ export {
 ErrorBoundary,
 } from 'expo-router';
 
+// Sidebar context for web
+const SidebarContext = React.createContext<{
+  isSidebarOpen: boolean;
+  toggleSidebar: () => void;
+} | null>(null);
+
+export const useSidebar = () => {
+  const context = React.useContext(SidebarContext);
+  if (!context && Platform.OS === 'web') {
+    throw new Error('useSidebar must be used within a SidebarProvider');
+  }
+  return context;
+};
+
 export default function RootLayout() {
   const hasMounted = React.useRef(false);
   const { colorScheme, isDarkColorScheme } = useColorScheme();
   const [isColorSchemeLoaded, setIsColorSchemeLoaded] = React.useState(false);
   const { fontsLoaded, fontError } = useAppFonts();
+  const [navigation, setNavigation] = React.useState<any>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
+
+  // Auto-open drawer on web (only for mobile drawer)
+  React.useEffect(() => {
+    if (Platform.OS !== 'web' && navigation && hasMounted.current) {
+      // Small delay to ensure drawer is ready
+      const timer = setTimeout(() => {
+        navigation.dispatch(DrawerActions.openDrawer());
+        setIsDrawerOpen(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [navigation]);
 
   useIsomorphicLayoutEffect(() => {
     if (hasMounted.current) {
@@ -104,50 +176,57 @@ export default function RootLayout() {
               <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
               <SignedIn>
                 <QuickSelector />
-                <Drawer
-                  drawerContent={(props) => <CustomDrawerContent {...props} />}
-                  screenOptions={{
-                    headerShown: false,
-                    drawerType: Platform.OS === 'web' ? 'permanent' : 'slide',
-                    drawerStyle: {
-                      width: 250,
-                      backgroundColor: isDarkColorScheme ? NAV_THEME.dark.card : NAV_THEME.light.card,
-                    },
-                    overlayColor: Platform.OS === 'web' ? 'transparent' : undefined,
-                    swipeEnabled: Platform.OS !== 'web',
-                    drawerActiveTintColor: isDarkColorScheme ? NAV_THEME.dark.primary : NAV_THEME.light.primary,
-                    drawerInactiveTintColor: isDarkColorScheme ? NAV_THEME.dark.text : NAV_THEME.light.text,
-                    drawerLabelStyle: {
-                      fontFamily: 'Ubuntu',
-                    }
-                  }}
-                  initialRouteName="index"
-                >
-                  <Drawer.Screen
-                    name="index"
-                    options={{
+                {Platform.OS === 'web' ? (
+                  <WebLayout />
+                ) : (
+                  <Drawer
+                    ref={(nav) => setNavigation(nav)}
+                    drawerContent={(props) => <CustomDrawerContent {...props} />}
+                    screenOptions={{
                       headerShown: false,
-                      drawerItemStyle: { display: 'none' },
+                      drawerType: 'slide',
+                      drawerStyle: {
+                        width: 280,
+                        backgroundColor: 'transparent',
+                      },
+                      overlayColor: 'rgba(0, 0, 0, 0.3)',
+                      swipeEnabled: true,
+                      drawerActiveTintColor: isDarkColorScheme ? NAV_THEME.dark.primary : NAV_THEME.light.primary,
+                      drawerInactiveTintColor: isDarkColorScheme ? NAV_THEME.dark.text : NAV_THEME.light.text,
+                      drawerLabelStyle: {
+                          fontFamily: 'Ubuntu',
+                      },
+                      drawerHideStatusBarOnOpen: false,
+                      drawerStatusBarAnimation: 'fade',
                     }}
-                  />
-                  <Drawer.Screen
-                    name="ask/index"
-                    options={{
-                      drawerLabel: 'Ask',
-                      title: 'Ask Question',
-                      drawerItemStyle: Platform.OS === 'web' ? { 
-                        marginVertical: 4,
-                      } : undefined,
-                    }}
-                  />
-                  <Drawer.Screen
-                    name="chat/[id]"
-                    options={{
-                      headerShown: false,
-                      drawerItemStyle: { display: 'none' },
-                    }}
-                  />
-                </Drawer>
+                    initialRouteName="index"
+                  >
+                    <Drawer.Screen
+                      name="index"
+                      options={{
+                        title: 'Tea3 Chat',
+                        drawerItemStyle: { display: 'none' },
+                      }}
+                    />
+                    <Drawer.Screen
+                      name="ask/index"
+                      options={{
+                        drawerLabel: 'Ask',
+                        title: 'Ask Question',
+                        drawerItemStyle: { 
+                          marginVertical: 4,
+                        },
+                      }}
+                    />
+                    <Drawer.Screen
+                      name="chat/[id]"
+                      options={{
+                        title: 'Chat',
+                        drawerItemStyle: { display: 'none' },
+                      }}
+                    />
+                  </Drawer>
+                )}
               </SignedIn>
               <SignedOut>
                 <View style={{ flex: 1 }}>

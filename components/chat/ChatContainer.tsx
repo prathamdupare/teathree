@@ -58,6 +58,20 @@ interface StreamMessage {
   };
 }
 
+// AI SDK message structure with parts
+interface AISDKMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  parts?: Array<{
+    type: 'text' | 'reasoning' | 'tool-invocation' | 'file' | 'source';
+    text?: string;
+    reasoning?: string;
+    details?: Array<{ type: 'text' | 'redacted'; text?: string }>;
+    [key: string]: any;
+  }>;
+}
+
 export function ChatContainer({ 
   chatId, 
   onChatCreated,
@@ -82,8 +96,8 @@ export function ChatContainer({
 
   const streamManagerRef = useRef<StreamingMessageManager | null>(null);
 
+  // Initialize StreamingMessageManager
   useEffect(() => {
-    // Initialize StreamingMessageManager
     streamManagerRef.current = new StreamingMessageManager(async (opts) => {
       await updateMessageContent({
         messageId: opts.messageId,
@@ -133,17 +147,22 @@ export function ChatContainer({
   const [selectedModel, setSelectedModel] = useState(
     chat?.currentModel || AI_PROVIDERS.google.models.find(m => m.isDefault)?.id || 'gemini-1.5-flash'
   );
+  const [enableReasoning, setEnableReasoning] = useState(
+    chat?.enableReasoning || false
+  );
 
   // Update when chat changes
   useEffect(() => {
     if (chat) {
       setSelectedProvider(chat.currentProvider);
       setSelectedModel(chat.currentModel);
+      setEnableReasoning(chat.enableReasoning || false);
     }
   }, [chat]);
 
   const updateChatProvider = useMutation(api.chats.updateChatProvider);
   const updateChatTitle = useMutation(api.chats.updateChatTitle);
+  const updateChatReasoning = useMutation(api.chats.updateChatReasoning);
   
   const handleProviderModelChange = async (provider: string, model: string) => {
     setSelectedProvider(provider);
@@ -158,9 +177,21 @@ export function ChatContainer({
     }
   };
 
+  const handleReasoningToggle = async (enabled: boolean) => {
+    setEnableReasoning(enabled);
+    
+    if (chatId) {
+      await updateChatReasoning({
+        chatId,
+        enableReasoning: enabled,
+      });
+    }
+  };
+
   const {
     handleInputChange,
     input: streamingInput,
+    setInput: setStreamingInput,
     handleSubmit: handleStreamingSubmit,
     isLoading: isStreamingLoading,
     messages: streamingMessages
@@ -169,11 +200,15 @@ export function ChatContainer({
     api: generateAPIUrl('/api/chat'),
     body: {
       provider: selectedProvider,
-      model: selectedModel
+      model: selectedModel,
+      enableReasoning: enableReasoning
     },
     onError: (error) => {
       console.error('[Chat] Stream Error:', {
-        error,
+        error: error,
+        errorMessage: error?.message,
+        errorStack: error?.stack,
+        errorName: error?.name,
         provider: selectedProvider,
         model: selectedModel,
         currentChatId: chatId
@@ -195,6 +230,13 @@ export function ChatContainer({
       }
     },
   });
+
+  // Handle defaultInputValue properly - set it once and then clear it
+  useEffect(() => {
+    if (defaultInputValue && !streamingInput) {
+      setStreamingInput(defaultInputValue);
+    }
+  }, [defaultInputValue, streamingInput, setStreamingInput]);
 
   useEffect(() => {
     if (!convexMessages) {
@@ -220,39 +262,110 @@ export function ChatContainer({
     const updateStreamingMessage = async () => {
       if (!currentAiMessageId || !streamingMessages.length || !tempMessageIdRef.current) return;
 
-      const lastMessage = streamingMessages[streamingMessages.length - 1] as unknown as StreamMessage;
-      if (lastMessage?.role === 'assistant' && lastMessage.content) {
-        // Extract reasoning from content based on provider and model
-        const providerConfig = AI_PROVIDERS[selectedProvider as keyof typeof AI_PROVIDERS];
-        const modelConfig = providerConfig?.models.find(m => m.id === selectedModel);
-        
-        let reasoning: string | undefined;
-        let content = lastMessage.content;
+      const lastMessage = streamingMessages[streamingMessages.length - 1] as AISDKMessage;
+      if (lastMessage?.role === 'assistant') {
+        console.log('[ChatContainer] Processing streaming message:', {
+          messageId: currentAiMessageId,
+          contentLength: lastMessage.content?.length,
+          provider: selectedProvider,
+          model: selectedModel,
+          hasParts: !!lastMessage.parts,
+          partsCount: lastMessage.parts?.length,
+          parts: lastMessage.parts?.map(p => ({ type: p.type, hasReasoning: !!p.reasoning }))
+        });
 
-        if (modelConfig?.supportsReasoning) {
-          switch (modelConfig.reasoningType) {
-            case 'thinking': {
-              const match = content.match(/<think>(.*?)<\/think>/s);
-              if (match) {
-                reasoning = match[1].trim();
-                content = content.replace(/<think>.*?<\/think>/s, '').trim();
+        // Add detailed debugging for the full message structure
+        console.log('[ChatContainer] Full AI SDK message structure:', {
+          messageId: currentAiMessageId,
+          messageKeys: Object.keys(lastMessage),
+          fullMessage: JSON.stringify(lastMessage, null, 2)
+        });
+
+        // Extract reasoning from AI SDK message parts
+        let reasoning: string | undefined;
+        let content = lastMessage.content || '';
+
+        if (enableReasoning && lastMessage.parts) {
+          // Look for reasoning parts in the AI SDK message
+          const reasoningParts = lastMessage.parts.filter(part => part.type === 'reasoning');
+          
+          if (reasoningParts.length > 0) {
+            // Combine all reasoning parts
+            reasoning = reasoningParts.map(part => {
+              if (part.reasoning) {
+                return part.reasoning;
               }
-              break;
-            }
-            case 'reasoning': {
-              const match = content.match(/<reason>(.*?)<\/reason>/s);
-              if (match) {
-                reasoning = match[1].trim();
-                content = content.replace(/<reason>.*?<\/reason>/s, '').trim();
+              if (part.details) {
+                // Handle detailed reasoning with potential redactions
+                return part.details
+                  .map(detail => detail.type === 'text' ? detail.text : '<redacted>')
+                  .join('');
               }
-              break;
-            }
-            case 'native': {
-              reasoning = lastMessage.metadata?.reasoning;
-              break;
+              return '';
+            }).filter(Boolean).join('\n\n');
+
+            console.log('[ChatContainer] Extracted reasoning from AI SDK parts:', {
+              messageId: currentAiMessageId,
+              reasoningPartsCount: reasoningParts.length,
+              reasoningLength: reasoning.length,
+              reasoningPreview: reasoning.substring(0, 100) + '...'
+            });
+          }
+
+          // Extract text content from parts if available
+          const textParts = lastMessage.parts.filter(part => part.type === 'text');
+          if (textParts.length > 0) {
+            content = textParts.map(part => part.text).filter(Boolean).join('\n');
+            console.log('[ChatContainer] Extracted content from text parts:', {
+              messageId: currentAiMessageId,
+              textPartsCount: textParts.length,
+              contentLength: content.length
+            });
+          }
+        }
+
+        // Fallback: if no reasoning from parts, try the old extraction methods
+        if (!reasoning && enableReasoning) {
+          const providerConfig = AI_PROVIDERS[selectedProvider as keyof typeof AI_PROVIDERS];
+          const modelConfig = providerConfig?.models.find(m => m.id === selectedModel);
+          
+          if (modelConfig?.supportsReasoning) {
+            console.log('[ChatContainer] No reasoning from AI SDK parts, trying fallback extraction...');
+            
+            switch (modelConfig.reasoningType) {
+              case 'thinking': {
+                const match = content.match(/<think>(.*?)<\/think>/s);
+                if (match) {
+                  reasoning = match[1].trim();
+                  content = content.replace(/<think>.*?<\/think>/s, '').trim();
+                  console.log('[ChatContainer] Fallback: extracted thinking reasoning:', {
+                    reasoningLength: reasoning.length
+                  });
+                }
+                break;
+              }
+              case 'reasoning': {
+                const match = content.match(/<reason>(.*?)<\/reason>/s);
+                if (match) {
+                  reasoning = match[1].trim();
+                  content = content.replace(/<reason>.*?<\/reason>/s, '').trim();
+                  console.log('[ChatContainer] Fallback: extracted reasoning content:', {
+                    reasoningLength: reasoning.length
+                  });
+                }
+                break;
+              }
             }
           }
         }
+
+        console.log('[ChatContainer] Final reasoning processing result:', {
+          hasReasoning: !!reasoning,
+          reasoningLength: reasoning?.length,
+          contentLength: content.length,
+          isComplete: !isStreamingLoading,
+          messageId: currentAiMessageId
+        });
 
         // Only update through StreamingSimulator for smooth letter-by-letter display
         if (streamingSimulatorRef.current) {
@@ -261,15 +374,25 @@ export function ChatContainer({
 
         // Update Convex in background
         if (streamManagerRef.current) {
-          await streamManagerRef.current.updateMessage({
+          const updateData = {
             messageId: currentAiMessageId,
             content,
             isComplete: !isStreamingLoading,
             metadata: {
-              ...(reasoning && { reasoning }),
-              ...(lastMessage.metadata || {})
+              ...(reasoning && { reasoning })
             }
+          };
+          
+          console.log('[ChatContainer] Updating message in Convex:', {
+            messageId: currentAiMessageId,
+            contentLength: content.length,
+            hasReasoning: !!reasoning,
+            reasoningLength: reasoning?.length,
+            metadata: updateData.metadata,
+            isComplete: updateData.isComplete
           });
+          
+          await streamManagerRef.current.updateMessage(updateData);
         }
         
         if (!isStreamingLoading) {
@@ -286,7 +409,7 @@ export function ChatContainer({
     };
 
     updateStreamingMessage();
-  }, [streamingMessages, isStreamingLoading, currentAiMessageId, selectedProvider, selectedModel]);
+  }, [streamingMessages, isStreamingLoading, currentAiMessageId, selectedProvider, selectedModel, enableReasoning]);
 
   const handleSubmit = async () => {
     if (!streamingInput.trim() || !user?.id || isStreamingLoading) {
@@ -345,6 +468,7 @@ export function ChatContainer({
           userId: user.id,
           provider: selectedProvider,
           model: selectedModel,
+          enableReasoning: enableReasoning,
         });
 
         try {
@@ -385,8 +509,6 @@ export function ChatContainer({
             title: streamingInput.slice(0, 30) + '...'
           });
         }
-        
-        onChatCreated?.(targetChatId);
       }
 
       console.log('[Chat] Creating user message:', {
@@ -422,6 +544,11 @@ export function ChatContainer({
 
       console.log('[Chat] Starting stream');
       await handleStreamingSubmit({} as any);
+      
+      // Notify parent that chat was created, but don't force navigation
+      if (!chatId && targetChatId) {
+        onChatCreated?.(targetChatId);
+      }
     } catch (error) {
       console.error('[Chat] Error during submission:', {
         error,
@@ -443,10 +570,13 @@ export function ChatContainer({
       <View className="max-w-4xl mx-auto w-full flex-1">
         {children}
         <View className="flex-1">
-          <MessageList messages={localMessages as unknown as Message[]} />
+          <MessageList 
+            messages={localMessages as unknown as Message[]} 
+            enableReasoning={enableReasoning}
+          />
         </View>
         <ChatInput
-          input={defaultInputValue || streamingInput}
+          input={streamingInput}
           onInputChange={(text) =>
             handleInputChange({
               target: { value: text },
@@ -457,6 +587,8 @@ export function ChatContainer({
           selectedModel={selectedModel}
           onModelSelect={handleProviderModelChange}
           isLoading={isStreamingLoading}
+          enableReasoning={enableReasoning}
+          onReasoningToggle={handleReasoningToggle}
         />
       </View>
     </View>

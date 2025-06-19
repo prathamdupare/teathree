@@ -1,10 +1,13 @@
-import { View, ScrollView, Text, Pressable, Platform } from "react-native";
+import { View, ScrollView, Text, Pressable, Platform, ActivityIndicator } from "react-native";
 import type { Message } from "~/types";
 import { CustomMarkdown } from "../CustomMarkdown";
-import { memo, useState, useCallback, useEffect } from "react";
+import { memo, useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from 'expo-clipboard';
-import { AI_PROVIDERS } from '~/lib/ai-providers';
+import { AI_PROVIDERS, getModelDisplayName } from '~/lib/ai-providers';
+import { useQuery } from 'convex/react';
+import { api } from '~/convex/_generated/api';
+import { Id } from '~/convex/_generated/dataModel';
 
 interface MessageMetadata {
   tokenCount?: number;
@@ -18,15 +21,20 @@ interface ExtendedMessage extends Message {
 }
 
 interface MessageListProps {
-  messages?: Message[];
+  messages: ExtendedMessage[];
   contentContainerStyle?: any;
+  enableReasoning?: boolean;
 }
 
-const TypingIndicator = () => (
-  <Text className="font-bold text-3xl">...</Text>
+const TypingIndicator = ({ size = 20 }: { size?: number }) => (
+  <ActivityIndicator 
+    size="small" 
+    color="#b02372" 
+    style={{ width: size, height: size }}
+  />
 );
 
-const MessageItem = memo(({ message }: { message: ExtendedMessage }) => {
+const MessageItem = memo(({ message, enableReasoning = false }: { message: ExtendedMessage; enableReasoning?: boolean }) => {
   const isOptimistic = typeof message._id === 'string' && message._id.startsWith('temp-');
   const isLoading = !message.isComplete;
   const isAI = message.role === 'assistant';
@@ -35,40 +43,149 @@ const MessageItem = memo(({ message }: { message: ExtendedMessage }) => {
   const [hasCopied, setHasCopied] = useState(false);
   const [showReasoning, setShowReasoning] = useState(false);
 
-  // Extract reasoning based on provider and model
-  const extractReasoning = (content: string, provider?: string, model?: string) => {
-    if (!provider || !model) return null;
+  // Extract reasoning using useMemo to prevent re-computation on every render/hover
+  const { reasoning, displayContent, hasReasoningCapability } = useMemo(() => {
+    if (!isAI) {
+      return { reasoning: null, displayContent: message.content, hasReasoningCapability: false };
+    }
+
+    console.log('[MessageItem] Extracting reasoning for message:', { 
+      messageId: message._id,
+      provider: message.provider, 
+      model: message.model, 
+      contentLength: message.content?.length,
+      hasContent: !!message.content,
+      hasMetadata: !!message.metadata,
+      metadataReasoning: message.metadata?.reasoning
+    });
+
+    // Check if this model supports reasoning to determine if we should show the dropdown
+    let hasReasoningCapability = false;
+    if (message.provider && message.model) {
+      const providerConfig = AI_PROVIDERS[message.provider as keyof typeof AI_PROVIDERS];
+      if (providerConfig) {
+        const modelConfig = providerConfig.models.find(m => m.id === message.model);
+        hasReasoningCapability = !!modelConfig?.supportsReasoning;
+      }
+    }
+
+    // First check if reasoning is already in metadata (for native reasoning models)
+    if (message.metadata?.reasoning) {
+      console.log('[MessageItem] Found reasoning in metadata:', {
+        messageId: message._id,
+        reasoningLength: message.metadata.reasoning.length
+      });
+      return {
+        reasoning: message.metadata.reasoning,
+        displayContent: message.content,
+        hasReasoningCapability
+      };
+    }
+
+    if (!message.provider || !message.model) {
+      console.log('[MessageItem] No provider or model:', { 
+        messageId: message._id,
+        provider: message.provider, 
+        model: message.model 
+      });
+      return { reasoning: null, displayContent: message.content, hasReasoningCapability };
+    }
 
     // Get provider config
-    const providerConfig = AI_PROVIDERS[provider as keyof typeof AI_PROVIDERS];
-    if (!providerConfig) return null;
+    const providerConfig = AI_PROVIDERS[message.provider as keyof typeof AI_PROVIDERS];
+    if (!providerConfig) {
+      console.log('[MessageItem] No provider config found:', { 
+        messageId: message._id,
+        provider: message.provider 
+      });
+      return { reasoning: null, displayContent: message.content, hasReasoningCapability };
+    }
 
     // Get model config
-    const modelConfig = providerConfig.models.find(m => m.id === model);
-    if (!modelConfig?.supportsReasoning) return null;
+    const modelConfig = providerConfig.models.find(m => m.id === message.model);
+    if (!modelConfig?.supportsReasoning) {
+      console.log('[MessageItem] Model does not support reasoning:', { 
+        messageId: message._id,
+        model: message.model, 
+        modelConfig: modelConfig,
+        supportsReasoning: modelConfig?.supportsReasoning 
+      });
+      return { reasoning: null, displayContent: message.content, hasReasoningCapability };
+    }
+
+    console.log('[MessageItem] Model supports reasoning, extracting...:', { 
+      messageId: message._id,
+      model: message.model, 
+      reasoningType: modelConfig.reasoningType,
+      supportsReasoning: modelConfig.supportsReasoning 
+    });
+
+    let extractedReasoning: string | null = null;
+    let cleanContent = message.content;
 
     switch (modelConfig.reasoningType) {
-      case 'thinking':
-        const thinkMatch = content.match(/<think>(.*?)<\/think>/s);
-        return thinkMatch ? thinkMatch[1].trim() : null;
-      case 'reasoning':
-        const reasonMatch = content.match(/<reason>(.*?)<\/reason>/s);
-        return reasonMatch ? reasonMatch[1].trim() : null;
-      case 'native':
+      case 'thinking': {
+        const thinkMatch = message.content.match(/<think>(.*?)<\/think>/s);
+        console.log('[MessageItem] Thinking extraction result:', { 
+          messageId: message._id,
+          hasMatch: !!thinkMatch, 
+          matchLength: thinkMatch?.[1]?.length,
+          contentPreview: message.content.substring(0, 200) + '...'
+        });
+        if (thinkMatch) {
+          extractedReasoning = thinkMatch[1].trim();
+          cleanContent = message.content.replace(/<think>.*?<\/think>/s, '').trim();
+        }
+        break;
+      }
+      case 'reasoning': {
+        const reasonMatch = message.content.match(/<reason>(.*?)<\/reason>/s);
+        console.log('[MessageItem] Reasoning extraction result:', { 
+          messageId: message._id,
+          hasMatch: !!reasonMatch, 
+          matchLength: reasonMatch?.[1]?.length 
+        });
+        if (reasonMatch) {
+          extractedReasoning = reasonMatch[1].trim();
+          cleanContent = message.content.replace(/<reason>.*?<\/reason>/s, '').trim();
+        }
+        break;
+      }
+      case 'native': {
         // For models with native reasoning (like OpenAI's o-series)
-        // The reasoning is part of the metadata
-        return message.metadata?.reasoning || null;
-      default:
-        return null;
+        // The reasoning should be in metadata, which we already checked above
+        console.log('[MessageItem] Native reasoning (should be in metadata):', { 
+          messageId: message._id,
+          hasMetadata: !!message.metadata,
+          hasReasoning: !!message.metadata?.reasoning
+        });
+        extractedReasoning = message.metadata?.reasoning || null;
+        break;
+      }
+      default: {
+        console.log('[MessageItem] Unknown reasoning type:', {
+          messageId: message._id,
+          reasoningType: modelConfig.reasoningType
+        });
+        break;
+      }
     }
-  };
 
-  const reasoning = isAI ? extractReasoning(message.content, message.provider, message.model) : null;
-  const displayContent = isAI && reasoning ? 
-    message.content.replace(/<think>.*?<\/think>/s, '')
-      .replace(/<reason>.*?<\/reason>/s, '')
-      .trim() : 
-    message.content;
+    console.log('[MessageItem] Final reasoning extraction result:', { 
+      messageId: message._id,
+      hasReasoning: !!extractedReasoning, 
+      reasoningLength: extractedReasoning?.length,
+      cleanContentLength: cleanContent.length,
+      provider: message.provider,
+      model: message.model
+    });
+
+    return {
+      reasoning: extractedReasoning,
+      displayContent: cleanContent,
+      hasReasoningCapability
+    };
+  }, [message._id, message.content, message.provider, message.model, message.metadata, isAI]);
 
   useEffect(() => {
     if (hasCopied) {
@@ -83,6 +200,10 @@ const MessageItem = memo(({ message }: { message: ExtendedMessage }) => {
   };
 
   const isControlsVisible = Platform.OS === 'web' ? (isMessageHovered || isCopyHovered) : true;
+
+  // Determine if we should show reasoning section (only if reasoning is enabled AND model supports it AND either loading or reasoning exists)
+  const shouldShowReasoningSection = isAI && enableReasoning && hasReasoningCapability && (isLoading || reasoning);
+  const isReasoningLoading = isLoading && enableReasoning && hasReasoningCapability && !reasoning;
 
   return (
     <Pressable 
@@ -101,19 +222,43 @@ const MessageItem = memo(({ message }: { message: ExtendedMessage }) => {
               : 'rounded bg-[#f5dbef] dark:bg-[#2b2431]'
           }`}
         >
+          {/* Reasoning Section - Always shown for AI messages from reasoning-capable models */}
+          {shouldShowReasoningSection && (
+            <View className="mb-3">
+              <Pressable
+                onPress={() => setShowReasoning(!showReasoning)}
+                className="flex-row items-center gap-2 py-2"
+                disabled={isReasoningLoading}
+              >
+                <Ionicons 
+                  name={showReasoning ? "chevron-down" : "chevron-forward"} 
+                  size={16} 
+                  color="#b02372" 
+                />
+                <Text className="text-sm text-[#b02372] dark:text-[#d7c2ce] font-medium">
+                  Reasoning
+                </Text>
+                {isReasoningLoading && (
+                  <View className="ml-1">
+                    <TypingIndicator size={16} />
+                  </View>
+                )}
+              </Pressable>
+              
+              {showReasoning && reasoning && (
+                <View className="mt-2 bg-[#f5dbef]/30 dark:bg-[#2b2431] rounded-lg p-3 border border-[#f5dbef]/50 dark:border-[#181217]">
+                  <CustomMarkdown content={reasoning} />
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Main Content */}
           <View className="flex-1">
             {message.content === '...' && isAI && isLoading ? (
               <TypingIndicator />
             ) : (
-              <Text 
-                className={`text-base p-0 m-0 ${
-                  isAI 
-                    ? 'text-[hsl(var(--text-primary))]' 
-                    : 'text-[hsl(var(--text-primary))]'
-                }`}
-              >
-                <CustomMarkdown content={displayContent} />
-              </Text>
+              <CustomMarkdown content={displayContent} />
             )}
           </View>
         </View>
@@ -130,26 +275,8 @@ const MessageItem = memo(({ message }: { message: ExtendedMessage }) => {
               className="text-xs text-[hsl(var(--text-muted))]"
               style={{ fontFamily: 'Ubuntu' }}
             >
-              {message.model}
+              {getModelDisplayName(message.provider || '', message.model)}
             </Text>
-          )}
-          {reasoning && (
-            <Pressable
-              onPress={() => setShowReasoning(!showReasoning)}
-              className={`flex-row items-center justify-center px-2 py-1 rounded transition-all duration-200 ${
-                showReasoning
-                  ? 'bg-[#b02372] dark:bg-[#d7c2ce]'
-                  : 'bg-[#f5dbef] dark:bg-[#2b2431]'
-              }`}
-            >
-              <Text className={`text-xs ${
-                showReasoning
-                  ? 'text-white dark:text-[#2b2431]'
-                  : 'text-[#b02372] dark:text-[#d7c2ce]'
-              }`}>
-                {showReasoning ? 'Hide Reasoning' : 'Show Reasoning'}
-              </Text>
-            </Pressable>
           )}
           <Pressable
             onPress={copyToClipboard}
@@ -175,22 +302,13 @@ const MessageItem = memo(({ message }: { message: ExtendedMessage }) => {
           </Pressable>
         </View>
       )}
-      
-      {reasoning && showReasoning && (
-        <View className="mt-2 px-4">
-          <View className="bg-[#f5dbef]/30 dark:bg-[#2b2431] rounded-lg p-3 border border-[#f5dbef]/50 dark:border-[#181217]">
-            <Text className="text-sm text-[#b02372] dark:text-[#d7c2ce] font-medium mb-1">
-              Reasoning Process:
-            </Text>
-            <CustomMarkdown content={reasoning} />
-          </View>
-        </View>
-      )}
     </Pressable>
   );
 });
 
-export function MessageList({ messages, contentContainerStyle }: MessageListProps) {
+MessageItem.displayName = "MessageItem";
+
+export function MessageList({ messages, contentContainerStyle, enableReasoning = false }: MessageListProps) {
   if (!messages?.length) return null;
 
   return (
@@ -206,7 +324,11 @@ export function MessageList({ messages, contentContainerStyle }: MessageListProp
       showsVerticalScrollIndicator={false}
     >
       {messages.map((message) => (
-        <MessageItem key={message._id} message={message} />
+        <MessageItem 
+          key={message._id} 
+          message={message as ExtendedMessage}
+          enableReasoning={enableReasoning}
+        />
       ))}
     </ScrollView>
   );

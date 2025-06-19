@@ -1,6 +1,6 @@
 import { google } from "@ai-sdk/google"
 import { openai } from "@ai-sdk/openai"
-import { anthropic } from "@ai-sdk/anthropic"
+import { anthropic, AnthropicProviderOptions } from "@ai-sdk/anthropic"
 import { deepseek } from "@ai-sdk/deepseek"
 import { xai } from "@ai-sdk/xai"
 import { streamText } from 'ai';
@@ -13,6 +13,7 @@ interface ChatRequest {
   messages: any[];
   provider?: Provider;
   model?: string;
+  enableReasoning?: boolean;
 }
 
 const providerSDKs: Record<Provider, ProviderSDK> = {
@@ -26,45 +27,9 @@ const providerSDKs: Record<Provider, ProviderSDK> = {
   openrouter: openai, // OpenRouter uses OpenAI-compatible API
 }
 
-// Provider-specific options for reasoning
-const getProviderOptions = (provider: Provider, modelId: string) => {
-  switch (provider) {
-    case 'anthropic':
-      if (modelId.includes('claude-4') || modelId.includes('claude-3')) {
-        return {
-          anthropic: {
-            thinking: { type: 'enabled', budgetTokens: 12000 }
-          }
-        };
-      }
-      break;
-    case 'openai':
-      if (modelId.startsWith('o')) {
-        return {
-          openai: {
-            reasoningEffort: 'medium'
-          }
-        };
-      }
-      break;
-    case 'deepseek':
-      if (modelId.includes('reasoner')) {
-        return {
-          deepseek: {
-            sendReasoning: true
-          }
-        };
-      }
-      break;
-    default:
-      return {};
-  }
-  return {};
-};
-
 export async function POST(req: Request) {
   try {
-    const { messages, provider = 'google', model } = (await req.json()) as ChatRequest;
+    const { messages, provider = 'google', model, enableReasoning = false } = (await req.json()) as ChatRequest;
 
     if (!messages || !Array.isArray(messages)) {
       console.error('[Chat API] Invalid messages format:', { messages });
@@ -105,24 +70,60 @@ export async function POST(req: Request) {
       );
     }
 
-    // Create base model with provider-specific options
-    const baseModel = providerSDKs[provider](modelToUse);
-    const providerOptions = getProviderOptions(provider, modelToUse);
+    // Create model instance without reasoning options
+    const modelInstance = providerSDKs[provider](modelToUse);
+
+    // Prepare streamText options
+    const streamTextOptions: any = {
+      model: modelInstance,
+      messages
+    };
+
+    // Add provider-specific reasoning options
+    if (enableReasoning) {
+      if (provider === 'anthropic' && (modelToUse.includes('claude-4') || modelToUse.includes('claude-3-7'))) {
+        console.log('[Chat API] Enabling Anthropic thinking:', { model: modelToUse });
+        streamTextOptions.providerOptions = {
+          anthropic: {
+            thinking: { 
+              type: 'enabled' as const,
+              budgetTokens: 12000 
+            }
+          } satisfies AnthropicProviderOptions
+        };
+        console.log('[Chat API] Provider options set:', JSON.stringify(streamTextOptions.providerOptions, null, 2));
+      } else if (provider === 'openai' && modelToUse.startsWith('o')) {
+        console.log('[Chat API] Enabling OpenAI reasoning effort:', { model: modelToUse });
+        streamTextOptions.providerOptions = {
+          openai: {
+            reasoningEffort: 'medium'
+          }
+        };
+      } else if (provider === 'deepseek' && modelToUse.includes('r1')) {
+        console.log('[Chat API] Enabling DeepSeek reasoning:', { model: modelToUse });
+        streamTextOptions.providerOptions = {
+          deepseek: {
+            sendReasoning: true
+          }
+        };
+      }
+    }
 
     console.log('[Chat API] Making request:', { 
       provider, 
       model: modelToUse, 
       messageCount: messages.length,
-      providerOptions
+      enableReasoning,
+      hasProviderOptions: !!streamTextOptions.providerOptions,
+      providerOptions: streamTextOptions.providerOptions
     });
 
-    const result = await streamText({
-      model: baseModel,
-      messages,
-      ...providerOptions
-    });
+    const result = await streamText(streamTextOptions);
+
+    console.log('[Chat API] Stream result created, returning response with sendReasoning:', enableReasoning);
 
     return result.toDataStreamResponse({
+      sendReasoning: enableReasoning,
       headers: {
         'Content-Type': 'application/octet-stream',
         'Content-Encoding': 'none',

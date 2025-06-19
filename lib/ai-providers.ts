@@ -49,19 +49,16 @@ export const AI_PROVIDERS: Record<string, AIProvider> = {
   anthropic: {
     name: 'Anthropic',
     models: [
-      // Base models (without reasoning)
-      { id: 'claude-opus-4-20250514', name: 'Claude 4 Opus', isDefault: true },
-      { id: 'claude-sonnet-4-20250514', name: 'Claude 4 Sonnet' },
-      { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet' },
-      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
-      { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku' },
-      { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus' },
-      { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' },
-      
-      // Models with extended thinking capability
-      { id: 'claude-opus-4-20250514-thinking', name: 'Claude 4 Opus (Extended Thinking)', supportsReasoning: true, reasoningType: 'thinking' },
-      { id: 'claude-sonnet-4-20250514-thinking', name: 'Claude 4 Sonnet (Extended Thinking)', supportsReasoning: true, reasoningType: 'thinking' },
-      { id: 'claude-3-7-sonnet-20250219-thinking', name: 'Claude 3.7 Sonnet (Thinking)', supportsReasoning: true, reasoningType: 'thinking' }
+      // Official Anthropic API model IDs with reasoning support where available
+      { id: 'claude-opus-4-20250514', name: 'Claude Opus 4', isDefault: true, supportsReasoning: true, reasoningType: 'thinking' },
+      { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', supportsReasoning: true, reasoningType: 'thinking' },
+      { id: 'claude-3-7-sonnet-20250219', name: 'Claude Sonnet 3.7', supportsReasoning: true, reasoningType: 'thinking' },
+      { id: 'claude-3-5-sonnet-20241022', name: 'Claude Sonnet 3.5 v2' },
+      { id: 'claude-3-5-sonnet-20240620', name: 'Claude Sonnet 3.5' },
+      { id: 'claude-3-5-haiku-20241022', name: 'Claude Haiku 3.5' },
+      { id: 'claude-3-opus-20240229', name: 'Claude Opus 3' },
+      { id: 'claude-3-sonnet-20240229', name: 'Claude Sonnet 3' },
+      { id: 'claude-3-haiku-20240307', name: 'Claude Haiku 3' }
     ],
     requiresApiKey: 'ANTHROPIC_API_KEY'
   },
@@ -91,4 +88,22 @@ export function getModelReasoningConfig(provider: string, modelId: string) {
     tagName: model.reasoningType || 'think',
     startWithReasoning: false
   };
+}
+
+// Helper function to check if a model supports reasoning
+export function modelSupportsReasoning(provider: string, modelId: string): boolean {
+  const providerConfig = AI_PROVIDERS[provider as keyof typeof AI_PROVIDERS];
+  if (!providerConfig) return false;
+  
+  const model = providerConfig.models.find(m => m.id === modelId);
+  return model?.supportsReasoning || false;
+}
+
+// Helper function to get the display name for a model
+export function getModelDisplayName(provider: string, modelId: string): string {
+  const providerConfig = AI_PROVIDERS[provider as keyof typeof AI_PROVIDERS];
+  if (!providerConfig) return modelId;
+  
+  const model = providerConfig.models.find(m => m.id === modelId);
+  return model?.name || modelId;
 }

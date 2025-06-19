@@ -42,10 +42,8 @@ function ChatItem({
 
   const handleDelete = async (e: any) => {
     e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this chat?')) {
-      await deleteChat({ chatId: id });
-      router.push('/');
-    }
+    await deleteChat({ chatId: id });
+    router.push('/');
   };
 
   const showActions = isItemHovered || isPinHovered || isDeleteHovered || isPinned;
@@ -164,6 +162,7 @@ function ChatSection({
 }
 
 export function CustomDrawerContent(props: any) {
+  const { toggleSidebar } = props;
   const { user } = useUser();
   const userImage = user?.imageUrl;
   const colorScheme = useColorScheme();
@@ -217,106 +216,130 @@ export function CustomDrawerContent(props: any) {
   }, [chats, searchQuery]);
 
   return (
-    <View className="w-64 flex-1">
+    <View className="w-full flex-1">
+      {/* Enhanced gradient background with multiple layers */}
       <LinearGradient
-        colors={['#f2e5f4', '#f2e5f4']}
+        colors={['#faf7fb', '#f2e5f4', '#ebd7ee']}
         className="absolute inset-0 dark:hidden"
       />
       <LinearGradient
-        colors={['#1b1219', '#0e080c']}
+        colors={['#1b1219', '#261922', '#0e080c']}
         className="absolute inset-0 hidden dark:flex"
       />
-      {/* Header */}
-      <View className="relative p-4">
-        <View className="flex-row items-center justify-between mb-4">
-          <View className="flex-row items-center gap-2">
-            <Text className="text-lg text-[hsl(var(--text-primary))]" style={{ fontFamily: 'Ubuntu-Medium' }}>
-              Tea3 Chat
-            </Text> 
+      
+      {/* Subtle overlay for depth */}
+      <View className="absolute inset-0 bg-white/10 dark:bg-black/20" />
+      
+      {/* Backdrop blur effect for modern look */}
+      <View className="absolute inset-0 backdrop-blur-sm" />
+      
+      {/* Main content */}
+      <View className="relative flex-1 border-r border-[#f0d7f0]/50 dark:border-[#2a1f24]">
+        {/* Header */}
+        <View className="relative p-4">
+          <View className="flex-row items-center justify-between mb-4">
+            <View className="flex-row items-center gap-3">
+              {/* Toggle button integrated into header */}
+              {toggleSidebar && (
+                <Pressable
+                  onPress={toggleSidebar}
+                  className="w-8 h-8 rounded-md items-center justify-center hover:bg-white/10 dark:hover:bg-black/20 transition-colors"
+                >
+                  <Ionicons 
+                    name="chevron-back" 
+                    size={16} 
+                    color={colorScheme === 'dark' ? '#d7c2ce' : '#560f2b'} 
+                  />
+                </Pressable>
+              )}
+              <Text className="text-lg text-[hsl(var(--text-primary))]" style={{ fontFamily: 'Ubuntu-Medium' }}>
+                Tea3 Chat
+              </Text> 
+            </View>
           </View>
+          <Button
+            onPress={() => router.push("/")}
+            className="w-full rounded-lg py-2.5 bg-[hsl(var(--primary-accent))] shadow-sm"
+          >
+            <Text className="text-white" style={{ fontFamily: 'Ubuntu-Medium' }}>New Chat</Text>
+          </Button>
         </View>
-        <Button
-          onPress={() => router.push("/")}
-          className="w-full rounded-lg py-2.5 bg-[hsl(var(--primary-accent))]"
-        >
-          <Text className="text-white" style={{ fontFamily: 'Ubuntu-Medium' }}>New Chat</Text>
-        </Button>
-      </View>
 
-      {/* Search */}
-      <View className="px-4 border-none">
-        <View className="re">
-          <View className="flex flex-row items-center gap-2">
-            <Ionicons
-              name="search"
-              size={16}
-              className="text-black dark:text-white"
-              style={{ color: "hsl(var(--text-muted))" }}
-            />
+        {/* Search */}
+        <View className="px-4 border-none">
+          <View className="re">
+            <View className="flex flex-row items-center gap-2">
+              <Ionicons
+                name="search"
+                size={16}
+                className="text-black dark:text-white"
+                style={{ color: "hsl(var(--text-muted))" }}
+              />
             <Input
               placeholder="Search your threads..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              className="border-none pl-2 rounded-lg bg-transparent text-[hsl(var(--text-primary))]"
-              style={{ fontFamily: 'Ubuntu' }}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                className="border-none pl-2 rounded-lg bg-transparent text-[hsl(var(--text-primary))]"
+                style={{ fontFamily: 'Ubuntu' }}
             />
+            </View>
+            <Separator className="my-2" />
           </View>
-          <Separator className="my-2" />
         </View>
-      </View>
 
-      {/* Chat History */}
-      <ScrollView className="flex-1 px-4">
-        <ChatSection 
-          title="Pinned" 
-          chats={organizedChats.pinned} 
-          icon="pin" 
-          selectedChatId={currentChatId}
-        />
-        <ChatSection 
-          title="Today" 
-          chats={organizedChats.today} 
-          selectedChatId={currentChatId}
-        />
-        <ChatSection 
-          title="Yesterday" 
-          chats={organizedChats.yesterday} 
-          selectedChatId={currentChatId}
-        />
-        {organizedChats.older.length > 0 && (
+        {/* Chat History */}
+        <ScrollView className="flex-1 px-4">
           <ChatSection 
-            title="Last 7 Days" 
-            chats={organizedChats.older} 
+            title="Pinned" 
+            chats={organizedChats.pinned} 
+            icon="pin" 
             selectedChatId={currentChatId}
           />
-        )}
-      </ScrollView>
+          <ChatSection 
+            title="Today" 
+            chats={organizedChats.today} 
+            selectedChatId={currentChatId}
+          />
+          <ChatSection 
+            title="Yesterday" 
+            chats={organizedChats.yesterday} 
+            selectedChatId={currentChatId}
+          />
+          {organizedChats.older.length > 0 && (
+            <ChatSection 
+              title="Last 7 Days" 
+              chats={organizedChats.older} 
+              selectedChatId={currentChatId}
+            />
+          )}
+        </ScrollView>
 
-      {/* User Profile */}
-      <View className="p-4">
-        <View className="flex-row items-center gap-3">
-          <Avatar
-            className="w-8 h-8"
-            alt={`${user?.firstName || "User"} profile`}
-          >
-            {userImage ? (
-              <AvatarImage source={{ uri: userImage }} />
-            ) : (
-              <AvatarFallback className="text-sm bg-[hsl(var(--primary-accent))]">
-                <Text style={{ fontFamily: 'Ubuntu-Medium' }}>
+        {/* User Profile */}
+        <View className="p-4 border-t border-[#f0d7f0]/30 dark:border-[#2a1f24]">
+          <View className="flex-row items-center gap-3">
+            <Avatar
+              className="w-8 h-8"
+              alt={`${user?.firstName || "User"} profile`}
+            >
+              {userImage ? (
+                <AvatarImage source={{ uri: userImage }} />
+              ) : (
+                <AvatarFallback className="text-sm bg-[hsl(var(--primary-accent))]">
+                  <Text style={{ fontFamily: 'Ubuntu-Medium' }}>
                   {user?.firstName?.[0] || "U"}
-                </Text>
-              </AvatarFallback>
-            )}
-          </Avatar>
+                  </Text>
+                </AvatarFallback>
+              )}
+            </Avatar>
 
-          <View className="flex-1">
-            <Text className="text-sm text-[hsl(var(--text-primary))]" style={{ fontFamily: 'Ubuntu-Medium' }}>
-              {user?.firstName} {user?.lastName}
-            </Text>
-            <Text className="text-xs text-[hsl(var(--text-muted))]" style={{ fontFamily: 'Ubuntu' }}>
-              Pro
-            </Text>
+            <View className="flex-1">
+              <Text className="text-sm text-[hsl(var(--text-primary))]" style={{ fontFamily: 'Ubuntu-Medium' }}>
+                {user?.firstName} {user?.lastName}
+              </Text>
+              <Text className="text-xs text-[hsl(var(--text-muted))]" style={{ fontFamily: 'Ubuntu' }}>
+                Pro
+              </Text>
+            </View>
           </View>
         </View>
       </View>

@@ -11,6 +11,7 @@ export default defineSchema({
         currentModel: v.string(),
         isArchived: v.boolean(),
         isPinned: v.boolean(),
+        enableReasoning: v.optional(v.boolean()),
     })
     .index("by_user", ["userId"])
     .index("by_user_updated", ["userId", "isArchived"]),

@@ -21,8 +21,8 @@ export function EmptyState() {
   const { user } = useUser()
 
   return (
-    <View className="flex-1 items-center justify-center p-8 bg-[#1a171d] dark:bg-[#f8f2f8]">
-      <View className="max-w-md w-full items-center">
+    <View className="flex-1 items-center justify-center bg-[#1a171d] dark:bg-[#f8f2f8]">
+      <View className="w-full max-w-md mx-auto px-8 py-16">
         {/* Title */}
         <Text className="text-2xl font-medium mb-8 text-white dark:text-[#1a171d] text-center">
           How can I help you, {user?.firstName}?
@@ -45,11 +45,11 @@ export function EmptyState() {
         </View>
 
         {/* Example Prompts */}
-        <View className="w-full space-y-5 flex-1 items-center justify-center">
+        <View className="w-full space-y-3">
           {EXAMPLE_PROMPTS.map((prompt, index) => (
             <Pressable
               key={index}
-              className="py-3 px-4 hover:bg-[#28242e] dark:hover:bg-[#f5dbef] transition-colors rounded-md w-full flex items-center justify-center"
+              className="py-3 px-4 hover:bg-[#28242e] dark:hover:bg-[#f5dbef] transition-colors rounded-md w-full"
             >
               <Text className="text-[#9ca3af] text-center text-base">{prompt}</Text>
             </Pressable>

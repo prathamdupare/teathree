@@ -18,7 +18,7 @@ config.resolver = {
   assetExts: config.resolver.assetExts.filter((ext) => ext !== "svg"),
   sourceExts: [...config.resolver.sourceExts, "svg"],
   alias: {
-    '~': path.resolve(__dirname, '.'),
+  '~': path.resolve(__dirname, '.'),
   }
 };
 

@@ -24,13 +24,13 @@ import {
   Del as ExpoDel,
 } from "@expo/html-elements";
 import { cssInterop } from "nativewind";
-import { ScrollView, Image, View, Text, StyleSheet, Pressable, Platform, useColorScheme } from "react-native";
+import { ScrollView, Image, View, Text, StyleSheet, Pressable, Platform } from "react-native";
 import type { MarkdownProps, RenderRules } from "react-native-markdown-display";
 import { useState, useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from 'expo-clipboard';
-import CodeHighlighter from "react-native-code-highlighter";
-import { atomOneDarkReasonable } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { useColorScheme } from '~/lib/useColorScheme';
+
 const styles = StyleSheet.create({
   baseFont: {
     fontFamily: 'Ubuntu',
@@ -85,9 +85,10 @@ type MarkdownNode = {
   index?: number;
 };
 
-const CodeBlock = ({ children }: { children: React.ReactNode }) => {
+const CodeBlock = ({ children, language = 'javascript' }: { children: React.ReactNode; language?: string }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
+  const { isDarkColorScheme } = useColorScheme();
 
   useEffect(() => {
     if (hasCopied) {
@@ -103,36 +104,57 @@ const CodeBlock = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const codeString = typeof children === 'string' ? children.trim() : String(children || '');
+
   return (
-    <View className="relative">
-      <View className="rounded-lg overflow-hidden bg-[#f5dbef]/30 dark:bg-[#1b1219] border border-[#f5dbef]/50 dark:border-[#2b2431]">
-        <Pre className="p-4">
-          <Code className="font-mono text-sm text-[#560f2b] dark:text-[#f5dbef]">
-            {typeof children === 'string' ? children.trim() : ''}
-          </Code>
-        </Pre>
-      </View>
+    <View style={{ marginVertical: 16 }}>
       <View 
-        className={`absolute top-2 right-2 ${Platform.OS === 'web' ? 'opacity-0 hover:opacity-100' : ''} transition-opacity duration-200`}
+        style={{
+          backgroundColor: isDarkColorScheme ? '#2a2830' : 'rgba(245, 219, 239, 0.3)',
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: isDarkColorScheme ? '#3d3a47' : 'rgba(245, 219, 239, 0.5)',
+          padding: 16,
+          position: 'relative',
+        }}
       >
+        <Text 
+          style={{
+            fontFamily: 'Ubuntu-Medium',
+            fontSize: 18,
+            color: isDarkColorScheme ? '#e8e6f0' : '#560f2b',
+            lineHeight: 24,
+          }}
+        >
+          {codeString}
+        </Text>
+        
         <Pressable
           onPress={copyToClipboard}
           onHoverIn={() => Platform.OS === 'web' && setIsHovered(true)}
           onHoverOut={() => Platform.OS === 'web' && setIsHovered(false)}
-          className={`flex-row items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 ${
-            hasCopied
-              ? 'bg-[#b02372] dark:bg-[#d7c2ce]'
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            width: 32,
+            height: 32,
+            backgroundColor: hasCopied
+              ? (isDarkColorScheme ? '#8b7aa8' : '#b02372')
               : isHovered 
-                ? 'bg-[#ecc7e4] dark:bg-[#362d3c]' 
-                : 'bg-[#f5dbef] dark:bg-[#2b2431]'
-          }`}
+                ? (isDarkColorScheme ? '#4a4556' : '#ecc7e4')
+                : (isDarkColorScheme ? '#3d3a47' : '#f5dbef'),
+            borderRadius: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           <Ionicons 
             name={hasCopied ? "checkmark" : "copy-outline"} 
             size={18}
             color={hasCopied 
-              ? (Platform.OS === 'web' ? '#ffffff' : '#2b2431')
-              : (Platform.OS === 'web' ? '#b02372' : '#d7c2ce')
+              ? (isDarkColorScheme ? '#ffffff' : '#ffffff')
+              : (isDarkColorScheme ? '#c8c4d4' : '#b02372')
             }
           />
         </Pressable>
@@ -143,40 +165,36 @@ const CodeBlock = ({ children }: { children: React.ReactNode }) => {
 
 const rules: RenderRules = {
   heading1: (node: MarkdownNode, children: React.ReactNode) => (
-    <H1 key={`h1-${node.key || Math.random()}`} className="font-semibold text-2xl text-foreground mb-4 tracking-tight">{children}</H1>
+    <H1 key={`h1-${node.key || Math.random()}`} className="font-semibold text-3xl text-foreground mb-4 tracking-tight">{children}</H1>
   ),
   heading2: (node: MarkdownNode, children: React.ReactNode) => (
-    <H2 key={`h2-${node.key || Math.random()}`} className="font-semibold text-xl text-foreground mb-3 tracking-tight">{children}</H2>
+    <H2 key={`h2-${node.key || Math.random()}`} className="font-semibold text-2xl text-foreground mb-3 tracking-tight">{children}</H2>
   ),
   heading3: (node: MarkdownNode, children: React.ReactNode) => (
-    <H3 key={`h3-${node.key || Math.random()}`} className="font-semibold text-lg text-foreground mb-3 tracking-tight">{children}</H3>
+    <H3 key={`h3-${node.key || Math.random()}`} className="font-semibold text-xl text-foreground mb-3 tracking-tight">{children}</H3>
   ),
   heading4: (node: MarkdownNode, children: React.ReactNode) => (
-    <H4 key={`h4-${node.key || Math.random()}`} className="font-semibold text-base text-foreground mb-2 tracking-tight">{children}</H4>
+    <H4 key={`h4-${node.key || Math.random()}`} className="font-semibold text-lg text-foreground mb-2 tracking-tight">{children}</H4>
   ),
   heading5: (node: MarkdownNode, children: React.ReactNode) => (
-    <H5 key={`h5-${node.key || Math.random()}`} className="font-semibold text-sm text-foreground mb-2 tracking-tight">{children}</H5>
+    <H5 key={`h5-${node.key || Math.random()}`} className="font-semibold text-lg text-foreground mb-2 tracking-tight">{children}</H5>
   ),
   heading6: (node: MarkdownNode, children: React.ReactNode) => (
-    <H6 key={`h6-${node.key || Math.random()}`} className="font-semibold text-sm text-foreground mb-2 tracking-tight">{children}</H6>
+    <H6 key={`h6-${node.key || Math.random()}`} className="font-semibold text-lg text-foreground mb-2 tracking-tight">{children}</H6>
   ),
   paragraph: (node: MarkdownNode, children: React.ReactNode) => (
-    <P key={`p-${node.key || Math.random()}`} className="font-sans text-base text-foreground leading-relaxed mb-4 last:mb-0 tracking-tight">{children}</P>
+    <P key={`p-${node.key || Math.random()}`} className="font-sans text-lg text-foreground leading-relaxed mb-4 last:mb-0 tracking-tight">{children}</P>
   ),
   code_block: (node: MarkdownNode, children: React.ReactNode) => {
-    const language = node.attributes?.language || 'typescript';
-    return (
-      <ScrollView key={`code-${node.key || Math.random()}`} horizontal showsHorizontalScrollIndicator={false}>
-        <CodeBlock>{children}</CodeBlock>
-      </ScrollView>
-    );
+    const language = node.attributes?.language || node.attributes?.class?.replace('language-', '') || 'javascript';
+    return <CodeBlock key={`code-${node.key || Math.random()}`} language={language}>{children}</CodeBlock>;
   },
   code_inline: (node: MarkdownNode, children: React.ReactNode) => (
-    <Code key={`inline-code-${node.key || Math.random()}`} className="font-mono text-sm bg-[#f5dbef]/30 dark:bg-[#1b1219] text-[#560f2b] dark:text-[#f5dbef] px-1.5 py-0.5 rounded border border-[#f5dbef]/50 dark:border-[#2b2431]">{children}</Code>
+    <Code key={`inline-code-${node.key || Math.random()}`} className="font-mono text-base bg-[#f5dbef]/30 dark:bg-[#2a2830] text-[#560f2b] dark:text-[#e8e6f0] px-1.5 py-0.5 rounded border border-[#f5dbef]/50 dark:border-[#3d3a47]">{children}</Code>
   ),
   list_item: (node: MarkdownNode, children: React.ReactNode) => (
     <View key={`li-${node.key || node.index || Math.random()}`} className="flex-row items-start mb-1 last:mb-0 pl-4">
-      <Text className="text-[#b02372] dark:text-[#d7c2ce] mr-2 mt-1">•</Text>
+      <Text className="text-[#b02372] dark:text-[#d7c2ce] mr-2 mt-1 text-lg">•</Text>
       <View className="flex-1">{children}</View>
     </View>
   ),
@@ -243,7 +261,7 @@ const rules: RenderRules = {
     <TD key={`td-${node.key || node.index || Math.random()}`} className="p-2 text-foreground">{children}</TD>
   ),
   text: (node: MarkdownNode) => {
-    return <Text key={`text-${node.key || Math.random()}`} className="font-sans text-foreground leading-relaxed tracking-tight">{node.content}</Text>;
+    return <Text key={`text-${node.key || Math.random()}`} className="font-sans text-lg text-foreground leading-relaxed tracking-tight">{node.content}</Text>;
   },
   body: (node: MarkdownNode, children: React.ReactNode) => {
     return <View key={`body-${node.key || Math.random()}`} className="space-y-2">{children}</View>;
@@ -256,101 +274,78 @@ export interface CustomMarkdownProps {
 }
 
 export function CustomMarkdown({ content }: CustomMarkdownProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { isDarkColorScheme } = useColorScheme();
 
   const markdownStyles = {
     body: {
       fontFamily: 'Ubuntu',
-      color: isDark ? '#E4E4E7' : '#560f2b',  // Light gray for dark mode
-    },
-    code_block: {
-      backgroundColor: isDark ? '#27272A' : 'rgba(245, 219, 239, 0.3)', // Darker background
-      padding: 16,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: isDark ? '#3F3F46' : 'rgba(245, 219, 239, 0.5)', // Subtle border
-      marginVertical: 16,
-    },
-    code_inline: {
-      backgroundColor: isDark ? '#27272A' : 'rgba(245, 219, 239, 0.3)',
-      color: isDark ? '#E4E4E7' : '#560f2b',
-      fontFamily: 'Ubuntu-Medium',
-      padding: 4,
-      borderRadius: 4,
-      borderWidth: 1,
-      borderColor: isDark ? '#3F3F46' : 'rgba(245, 219, 239, 0.5)',
-    },
-    fence: {
-      marginVertical: 16,
-      padding: 16,
-      backgroundColor: isDark ? '#27272A' : 'rgba(245, 219, 239, 0.3)',
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: isDark ? '#3F3F46' : 'rgba(245, 219, 239, 0.5)',
+      fontSize: 16,
+      color: isDarkColorScheme ? '#E4E4E7' : '#560f2b',  // Light gray for dark mode
     },
     heading1: {
       fontFamily: 'Ubuntu-Bold',
-      fontSize: 24,
+      fontSize: 28,
       marginBottom: 16,
-      color: isDark ? '#FAFAFA' : '#560f2b', // Almost white for headings
+      color: isDarkColorScheme ? '#FAFAFA' : '#560f2b', // Almost white for headings
     },
     heading2: {
       fontFamily: 'Ubuntu-Bold',
-      fontSize: 20,
+      fontSize: 24,
       marginBottom: 12,
-      color: isDark ? '#FAFAFA' : '#560f2b',
+      color: isDarkColorScheme ? '#FAFAFA' : '#560f2b',
     },
     heading3: {
       fontFamily: 'Ubuntu-Bold',
-      fontSize: 18,
+      fontSize: 20,
       marginBottom: 12,
-      color: isDark ? '#FAFAFA' : '#560f2b',
+      color: isDarkColorScheme ? '#FAFAFA' : '#560f2b',
     },
     heading4: {
       fontFamily: 'Ubuntu-Bold',
-      fontSize: 16,
+      fontSize: 18,
       marginBottom: 8,
-      color: isDark ? '#FAFAFA' : '#560f2b',
+      color: isDarkColorScheme ? '#FAFAFA' : '#560f2b',
     },
     heading5: {
       fontFamily: 'Ubuntu-Bold',
-      fontSize: 14,
+      fontSize: 16,
       marginBottom: 8,
-      color: isDark ? '#FAFAFA' : '#560f2b',
+      color: isDarkColorScheme ? '#FAFAFA' : '#560f2b',
     },
     heading6: {
       fontFamily: 'Ubuntu-Bold',
-      fontSize: 14,
+      fontSize: 16,
       marginBottom: 8,
-      color: isDark ? '#FAFAFA' : '#560f2b',
+      color: isDarkColorScheme ? '#FAFAFA' : '#560f2b',
     },
     paragraph: {
       marginBottom: 16,
-      lineHeight: 24,
-      color: isDark ? '#E4E4E7' : '#560f2b',
+      lineHeight: 26,
+      fontSize: 16,
+      color: isDarkColorScheme ? '#E4E4E7' : '#560f2b',
     },
     list_item: {
       marginBottom: 8,
-      color: isDark ? '#E4E4E7' : '#560f2b',
+      fontSize: 16,
+      color: isDarkColorScheme ? '#E4E4E7' : '#560f2b',
     },
     blockquote: {
-      backgroundColor: isDark ? '#18181B' : 'rgba(245, 219, 239, 0.2)', // Darker background
+      backgroundColor: isDarkColorScheme ? '#18181B' : 'rgba(245, 219, 239, 0.2)', // Darker background
       borderLeftWidth: 4,
-      borderLeftColor: isDark ? '#A1A1AA' : '#b02372', // Subtle accent
+      borderLeftColor: isDarkColorScheme ? '#A1A1AA' : '#b02372', // Subtle accent
       paddingHorizontal: 16,
       paddingVertical: 8,
       marginVertical: 16,
     },
     link: {
-      color: isDark ? '#D4D4D8' : '#b02372',
+      color: isDarkColorScheme ? '#D4D4D8' : '#b02372',
       textDecorationLine: 'underline' as const,
     },
     list_item_bullet: {
-      color: isDark ? '#A1A1AA' : '#b02372',
+      color: isDarkColorScheme ? '#A1A1AA' : '#b02372',
     },
     hr: {
-      backgroundColor: isDark ? '#3F3F46' : 'rgba(245, 219, 239, 0.5)',
+      backgroundColor: isDarkColorScheme ? '#3F3F46' : 'rgba(245, 219, 239, 0.5)',
       height: 1,
       marginVertical: 16,
     }

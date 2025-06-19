@@ -1,8 +1,9 @@
 import { View, TextInput, Text, Pressable, useColorScheme } from "react-native"
-import { memo, useEffect } from "react"
+import { memo } from "react"
 import { Button } from "~/components/ui/button"
 import { Ionicons } from "@expo/vector-icons"
 import { ModelSelector } from "./ModelSelector"
+import { modelSupportsReasoning } from "~/lib/ai-providers"
 
 interface ChatInputProps {
   input: string
@@ -12,6 +13,8 @@ interface ChatInputProps {
   selectedProvider: string
   onModelSelect: (provider: string, model: string) => void
   isLoading?: boolean
+  enableReasoning?: boolean
+  onReasoningToggle?: (enabled: boolean) => void
 }
 
 const ChatInputComponent = ({
@@ -22,18 +25,15 @@ const ChatInputComponent = ({
   selectedModel,
   onModelSelect,
   isLoading = false,
+  enableReasoning = false,
+  onReasoningToggle,
 }: ChatInputProps) => {
   const canSubmit = input.trim().length > 0 && !isLoading
   const colorScheme = useColorScheme()
+  const supportsReasoning = modelSupportsReasoning(selectedProvider, selectedModel)
 
   // Choose icon color based on theme
   const iconColor = colorScheme === "dark" ? "#bdbdbd" : "#6b6b6b"
-
-  useEffect(() => {
-    if (input) {
-      onInputChange(input)
-    }
-  }, [input])
 
   const handleSubmit = (e?: any) => {
     if (e?.nativeEvent?.key === "Enter" && !e.nativeEvent.shiftKey) {
@@ -89,6 +89,32 @@ const ChatInputComponent = ({
                 selectedModel={selectedModel}
                 onModelSelect={onModelSelect}
               />
+              
+              {/* Reasoning Toggle for supported models */}
+              {supportsReasoning && (
+                <Pressable
+                  onPress={() => onReasoningToggle?.(!enableReasoning)}
+                  className={`flex-row items-center gap-1 px-2 py-1 rounded-md transition-all duration-200 ${
+                    enableReasoning
+                      ? 'bg-[#b02372] dark:bg-[#d7c2ce]'
+                      : 'bg-[#f5dbef] dark:bg-[#2b2431]'
+                  }`}
+                >
+                  <Ionicons 
+                    name="bulb" 
+                    size={12} 
+                    color={enableReasoning ? "white" : "#b02372"} 
+                  />
+                  <Text className={`text-xs ${
+                    enableReasoning
+                      ? 'text-white dark:text-[#2b2431]'
+                      : 'text-[#b02372] dark:text-[#d7c2ce]'
+                  }`}>
+                    {enableReasoning ? 'Reasoning ON' : 'Reasoning'}
+                  </Text>
+                </Pressable>
+              )}
+              
               <Pressable
                 className="absolute right-1 top-1/2 transform -translate-y-1/2 rounded-lg w-10 h-10 items-center justify-center bg-[#cd98b2] dark:bg-[#3a2033]"
                 onPress={() => handleSubmit()}

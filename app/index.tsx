@@ -80,14 +80,14 @@ export default function App() {
 
   // Show empty state UI
   const EmptyState = () => (
-    <View className="flex-1 items-center justify-center p-8 bg-[#f8f2f8] dark:bg-[#221d27]">
-      <View className="max-w-2xl w-full mx-auto">
+    <View className="flex-1 items-center justify-center bg-[#f8f2f8] dark:bg-[#221d27]">
+      <View className="w-full max-w-2xl mx-auto px-8 py-16">
         <Text className="text-3xl font-medium text-[#3a1326] dark:text-white mb-12 text-center">
           How can I help you, {user?.firstName || 'there'}?
         </Text>
         
         {/* Action Buttons */}
-        <View className="flex-row items-center justify-center gap-4 mb-12 w-full">
+        <View className="flex-row items-center justify-center gap-4 mb-12 flex-wrap">
           {TABS.map((tab) => (
             <Pressable
               key={tab.id}
@@ -117,16 +117,16 @@ export default function App() {
         </View>
 
         {/* Example Prompts */}
-        <View className="space-y-4">
+        <View className="space-y-4 w-full">
           {TABS.find(t => t.id === activeTab)?.prompts.map((prompt, index) => (
             <Pressable
               key={index}
               onPress={() => {
                 setInputValue(prompt);
               }}
-              className="w-full"
+              className="w-full p-3 rounded-lg hover:bg-white/5 dark:hover:bg-black/5 transition-colors"
             >
-              <Text className="text-[#b02372] dark:text-[#9ca3af] text-left text-base hover:text-[#560f2b] dark:hover:text-[#d1d5db] transition-colors">
+              <Text className="text-[#b02372] dark:text-[#9ca3af] text-center text-base hover:text-[#560f2b] dark:hover:text-[#d1d5db] transition-colors">
                 {prompt}
               </Text>
             </Pressable>
@@ -143,7 +143,9 @@ export default function App() {
           chatId={chatId} 
           onChatCreated={(newChatId) => {
             setChatId(newChatId);
-            router.push(`/chat/${newChatId}`);
+            setInputValue(''); // Clear the input value after submission
+            // Don't navigate immediately - let the response complete first
+            // Navigation will happen when user sends another message or manually navigates
           }}
           defaultInputValue={inputValue}
         >
@@ -158,10 +160,10 @@ export default function App() {
               <View className="space-y-2 text-center">
                 <Text className="text-4xl font-bold tracking-tighter text-[#3a1326] dark:text-white">
                   Welcome to <Text className="text-[#b02372]">T3.chat</Text>
-          </Text>
+                </Text>
                 <Text className="text-base text-muted-foreground text-center">
                   Sign in below (we'll increase your message limits if you do 😉)
-          </Text>
+                </Text>
               </View>
 
               <Button 
@@ -190,7 +192,7 @@ export default function App() {
                 </View>
                 <Text className="text-white font-medium text-base">
                   Continue with Google
-          </Text>
+                </Text>
               </Button>
 
               <Text className="text-xs text-center text-muted-foreground">

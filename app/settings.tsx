@@ -156,8 +156,8 @@ export default function SettingsScreen() {
         <Text className="text-gray-400 mb-4">Permanently delete your account and all associated data.</Text>
         <View className="space-y-4">
           <Button className="bg-red-600 w-full">
-            <Text className="text-white font-medium">Delete Account</Text>
-          </Button>
+          <Text className="text-white font-medium">Delete Account</Text>
+        </Button>
           <SignOutButton />
         </View>
       </View>

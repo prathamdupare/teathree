@@ -8,6 +8,7 @@ export const createChat = mutation({
         userId: v.string(),
         provider: v.string(),
         model: v.string(),
+        enableReasoning: v.optional(v.boolean()),
     },
     handler: async (ctx, args) => {
         const chatId = await ctx.db.insert("chats", {
@@ -19,6 +20,7 @@ export const createChat = mutation({
             updatedAt: Date.now(),
             isArchived: false,
             isPinned: false,
+            enableReasoning: args.enableReasoning || false,
         });
         return chatId;
     }
@@ -69,6 +71,20 @@ export const updateChatTitle = mutation({
         });
     }
 })
+
+export const updateChatReasoning = mutation({
+    args: {
+        chatId: v.id("chats"),
+        enableReasoning: v.boolean(),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.chatId, {
+            enableReasoning: args.enableReasoning,
+            updatedAt: Date.now(),
+        });
+    }
+})
+
 export const pinChat = mutation({
     args: {
         chatId: v.id("chats"),
@@ -88,6 +104,13 @@ export const deleteChat = mutation({
         chatId: v.id("chats"),
     },
     handler: async (ctx, args) => {
+        // Check if the chat exists first
+        const chat = await ctx.db.get(args.chatId);
+        if (!chat) {
+            // Chat doesn't exist, return gracefully
+            return;
+        }
+
         // Delete all messages in the chat
         const messages = await ctx.db
             .query("messages")
